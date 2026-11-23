@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
-<title>Hisab Devesh Vishal</title>
+<title>Hisab</title>
 <style>
 :root{
   --bg:#f3f5f9;--card:#fff;--ink:#17233b;--mute:#6b7a90;--line:#e3e8f0;--navy:#1f2d4a;--accent:#2f4b7c;
@@ -91,6 +91,11 @@ td.n,th.n{text-align:right}
 .welcome{max-width:420px;margin:12vh auto;padding:0 18px;text-align:center}
 .welcome h1{font-size:26px}.welcome p{color:var(--mute);line-height:1.5}
 .banner{background:#fff3cd;color:#664d03;padding:8px 12px;font-size:12px;text-align:center}
+.cats button.me{outline:2px solid var(--accent)}
+.nets{display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-end;margin-top:4px}
+.pill.sm{font-size:10px;padding:2px 6px;margin:0}
+.line{padding:4px 0;font-size:18px;font-weight:800}
+.shr{display:flex;align-items:center;gap:8px;margin-top:6px}.shr span{flex:1}.shr input{width:110px!important;padding:9px!important}
 .view{display:none}.view.on{display:block}
 #printArea{display:none}
 @media print{
@@ -108,8 +113,9 @@ td.n,th.n{text-align:right}
 <div id="banner"></div>
 <div id="welcome" class="welcome" style="display:none">
   <div style="font-size:54px">📒</div>
-  <h1>Hisab · Devesh &amp; Vishal</h1>
+  <h1>Hisab · Shared expenses</h1>
   <p>No login needed. Your hisab lives behind a private link. Create it once, then share the link only with each other.</p>
+  <div id="saved"></div>
   <div class="row" style="flex-direction:column">
     <button class="btn" id="createBtn">Create new hisab</button>
     <input type="text" id="pasteLink" placeholder="…or paste your hisab link here" style="margin-top:6px">
@@ -117,10 +123,17 @@ td.n,th.n{text-align:right}
   </div>
 </div>
 
+<div id="setup" class="welcome" style="display:none;text-align:left">
+  <h1 style="text-align:center">Set up your group</h1>
+  <label class="f">Group name</label><input type="text" id="su-name" value="Our Hisab">
+  <label class="f">How many people?</label><select id="su-n"></select>
+  <div id="su-names"></div>
+  <div class="row"><button class="btn" id="su-go">Start hisab</button></div>
+</div>
 <div id="main" style="display:none">
 <header><div class="wrap top">
   <div><h1>📒 Hisab</h1><small id="since">Devesh &amp; Vishal</small></div>
-  <div class="chips"><button class="chip" id="meChip"></button><button class="chip" id="shareBtn">🔗 Share</button><button class="chip" id="pdfBtn">⬇ PDF</button></div>
+  <div class="chips"><button class="chip" id="meChip"></button><button class="chip" id="cfgBtn">⚙</button><button class="chip" id="shareBtn">🔗 Share</button><button class="chip" id="pdfBtn">⬇ PDF</button></div>
 </div></header>
 
 <div class="wrap" id="app">
@@ -146,139 +159,187 @@ td.n,th.n{text-align:right}
 <div class="sheet-bg" id="sheetBg"><div class="sheet" id="sheet"></div></div>
 <div class="sheet-bg" id="meBg"><div class="sheet" style="text-align:center">
   <h3>Who are you?</h3><p style="color:var(--mute);margin-top:0">Entries and logs are tagged with your name.</p>
-  <div class="row"><button class="btn" data-me="D">I'm Devesh</button><button class="btn" data-me="V">I'm Vishal</button></div>
+  <div class="row" id="meList" style="flex-wrap:wrap"></div>
 </div></div>
 <div class="toast" id="toast"></div>
 <div id="printArea"></div>
 
 <script type="module">
 import { firebaseConfig } from "./firebase-config.js";
-const NAMES={D:"Devesh",V:"Vishal"};
 const CATS={Food:["🍽️","#59a14f"],Drinks:["🥤","#2f4b7c"],Fuel:["⛽","#f28e2b"],Outing:["🏞️","#76b7b2"],Rent:["🏠","#b07aa1"],Utilities:["💡","#edc948"],Shopping:["🛍️","#ff9da7"],Travel:["🚗","#9c755f"],Other:["📦","#e15759"],Loan:["🤝","#8e9bb0"]};
+const PAL=["#2f4b7c","#f28e2b","#59a14f","#e15759","#76b7b2","#b07aa1","#edc948","#ff9da7","#9c755f","#8e9bb0"];
 const START="2026-11-23";
+const DEFAULT_MEMBERS=[{id:"D",name:"Devesh"},{id:"V",name:"Vishal"}];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const r2=n=>Math.round(n*100)/100;
 const inr=n=>"₹"+r2(n).toLocaleString("en-IN",{maximumFractionDigits:2});
 const fdate=d=>{const [y,m,dd]=d.split("-");return `${+dd} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m-1]}`};
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
-const toast=m=>{const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display="none",2400)};
+const toast=m=>{const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display="none",2600)};
+const lget=k=>{try{return localStorage.getItem(k)||""}catch{return""}};
+const lset=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
 
 /* ---------- secret key (lives in the URL #, never in the repo) ---------- */
-const getKey=()=>{const m=location.hash.match(/k=([A-Za-z0-9_-]{24,})/);return m?m[1]:(()=>{try{return localStorage.getItem("hisab_key")||""}catch{return""}})()};
+const getKey=()=>{const m=location.hash.match(/k=([A-Za-z0-9_-]{24,})/);return m?m[1]:lget("hisab_key")};
 const newKey=()=>{const a=new Uint8Array(24);crypto.getRandomValues(a);return Array.from(a,b=>"abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b%57]).join("")};
-const setKey=k=>{try{localStorage.setItem("hisab_key",k)}catch{}location.hash="k="+k};
+const setKey=k=>{lset("hisab_key",k);location.hash="k="+k};
 let KEY=getKey();
 if(KEY&&!location.hash.includes(KEY))setKey(KEY);
-else if(KEY){try{localStorage.setItem("hisab_key",KEY)}catch{}}
 
 /* ---------- storage: Firebase if configured, otherwise local demo ---------- */
 const live=!!(firebaseConfig&&firebaseConfig.apiKey&&firebaseConfig.projectId);
 let store;
+const showErr=e=>{console.error(e);toast("Connection problem: "+(e.code||e.message))};
 async function initStore(){
   if(live){
     const {initializeApp}=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
     const fs=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
     const db=fs.getFirestore(initializeApp(firebaseConfig));
-    const E=fs.collection(db,"hisabs",KEY,"entries"),L=fs.collection(db,"hisabs",KEY,"logs");
+    const E=fs.collection(db,"hisabs",KEY,"entries"),L=fs.collection(db,"hisabs",KEY,"logs"),M=fs.doc(db,"hisabs",KEY,"meta","config");
     store={
-      onEntries:cb=>fs.onSnapshot(E,s=>cb(s.docs.map(d=>d.data())),e=>showErr(e)),
-      onLogs:cb=>fs.onSnapshot(fs.query(L,fs.orderBy("at","desc"),fs.limit(300)),s=>cb(s.docs.map(d=>d.data())),e=>showErr(e)),
-      save:e=>fs.setDoc(fs.doc(E,e.id),e),
-      log:l=>fs.addDoc(L,l)
+      onMeta:cb=>fs.onSnapshot(M,s=>cb(s.exists()?s.data():null),showErr),
+      onEntries:cb=>fs.onSnapshot(E,s=>cb(s.docs.map(d=>d.data())),showErr),
+      onLogs:cb=>fs.onSnapshot(fs.query(L,fs.orderBy("at","desc"),fs.limit(300)),s=>cb(s.docs.map(d=>d.data())),showErr),
+      saveMeta:m=>fs.setDoc(M,m),save:e=>fs.setDoc(fs.doc(E,e.id),e),log:l=>fs.addDoc(L,l)
     };
   }else{
-    $("#banner").innerHTML='<div class="banner">Demo mode: data is saved only on this device. Add your Firebase config to go live.</div>';
-    const k="hisab_demo_"+KEY;const ld=n=>{try{return JSON.parse(localStorage.getItem(k+n)||"[]")}catch{return[]}};
-    let ecb,lcb;const ev=()=>{ecb&&ecb(ld("e"));lcb&&lcb(ld("l").sort((a,b)=>b.at-a.at))};
-    store={onEntries:cb=>{ecb=cb;ev()},onLogs:cb=>{lcb=cb;ev()},
-      save:async e=>{const a=ld("e").filter(x=>x.id!==e.id);a.push(e);localStorage.setItem(k+"e",JSON.stringify(a));ev()},
-      log:async l=>{const a=ld("l");a.push(l);localStorage.setItem(k+"l",JSON.stringify(a));ev()}};
+    $("#banner").innerHTML='<div class="banner">Demo mode: data is saved only on this device.</div>';
+    const k="hisab_demo_"+KEY;const ld=(n,d)=>{try{return JSON.parse(localStorage.getItem(k+n)||d)}catch{return JSON.parse(d)}};
+    let mcb,ecb,lcb;const ev=()=>{mcb&&mcb(ld("m","null"));ecb&&ecb(ld("e","[]"));lcb&&lcb(ld("l","[]").sort((a,b)=>b.at-a.at))};
+    store={onMeta:cb=>{mcb=cb;ev()},onEntries:cb=>{ecb=cb;ev()},onLogs:cb=>{lcb=cb;ev()},
+      saveMeta:async m=>{lset(k+"m",JSON.stringify(m));ev()},
+      save:async e=>{const a=ld("e","[]").filter(x=>x.id!==e.id);a.push(e);lset(k+"e",JSON.stringify(a));ev()},
+      log:async l=>{const a=ld("l","[]");a.push(l);lset(k+"l",JSON.stringify(a));ev()}};
   }
 }
-const showErr=e=>{console.error(e);toast("Connection problem: "+(e.code||e.message))};
 
-/* ---------- maths ---------- */
-// balance > 0  => Vishal owes Devesh ; < 0 => Devesh owes Vishal
-const delta=e=>e.type==="expense"?(e.payer==="D"?e.amount*(1-e.dShare):-e.amount*e.dShare):(e.payer==="D"?e.amount:-e.amount);
-const verdict=b=>{b=r2(b);return b>0?{cls:"red",txt:`Vishal owes Devesh ${inr(b)}`,short:`Vishal → Devesh ${inr(b)}`}:b<0?{cls:"green",txt:`Devesh owes Vishal ${inr(-b)}`,short:`Devesh → Vishal ${inr(-b)}`}:{cls:"zero",txt:"All settled ✅",short:"Settled"}};
-let entries=[],logs=[],me=(()=>{try{return localStorage.getItem("hisab_me")||""}catch{return""}})();
-const active=()=>entries.filter(e=>!e.deleted).sort((a,b)=>a.date===b.date?a.createdAt-b.createdAt:a.date<b.date?-1:1);
+/* ---------- saved hisabs on this device (for switching) ---------- */
+const getList=()=>{try{return JSON.parse(lget("hisab_list")||"[]")}catch{return[]}};
+const saveList=(k,n)=>{const l=getList().filter(x=>x.key!==k);l.unshift({key:k,name:n});lset("hisab_list",JSON.stringify(l.slice(0,20)))};
+function logout(){if(!confirm("Log out of this hisab? You can open it again from the saved list or your private link."))return;lset("hisab_key","");location.hash="";location.reload()}
+function openSaved(k){lset("hisab_key",k);location.hash="k="+k;location.reload()}
+
+/* ---------- state ---------- */
+let config=null,entries=[],logs=[],me=lget("hisab_me_"+KEY),gotMeta=false,gotEntries=false;
+const members=()=>config?config.members:DEFAULT_MEMBERS;
+const nm=id=>(members().find(m=>m.id===id)||{name:id}).name;
+const col=id=>PAL[Math.max(0,members().findIndex(m=>m.id===id))%PAL.length];
+
+/* ---------- maths: net[p] > 0 => p is owed money, < 0 => p owes ---------- */
+function norm(e){ // upgrade old 2-person entries (payer D/V + dShare)
+  if(e.type==="expense"){if(e.shares)return e;const d=e.dShare??.5;return {...e,shares:{D:r2(e.amount*d),V:r2(e.amount*(1-d))}}}
+  return e.to?e:{...e,to:e.payer==="D"?"V":"D"};
+}
+const active=()=>entries.filter(e=>!e.deleted).map(norm).sort((a,b)=>a.date===b.date?a.createdAt-b.createdAt:a.date<b.date?-1:1);
+function effect(e){const n={};const add=(i,v)=>n[i]=r2((n[i]||0)+v);
+  add(e.payer,e.amount);if(e.type==="expense")for(const[k,v]of Object.entries(e.shares))add(k,-v);else add(e.to,-e.amount);return n}
+function settle(net){const c=[],d=[];
+  for(const[k,v]of Object.entries(net)){const x=r2(v);if(x>.004)c.push([k,x]);else if(x<-.004)d.push([k,-x])}
+  c.sort((a,b)=>b[1]-a[1]);d.sort((a,b)=>b[1]-a[1]);const out=[];let i=0,j=0;
+  while(i<c.length&&j<d.length){const a=Math.min(c[i][1],d[j][1]);out.push({from:d[j][0],to:c[i][0],amt:r2(a)});c[i][1]=r2(c[i][1]-a);d[j][1]=r2(d[j][1]-a);if(c[i][1]<.005)i++;if(d[j][1]<.005)j++}
+  return out}
+const lines=t=>t.length?t.map(x=>`${nm(x.from)} pays ${nm(x.to)} ${inr(x.amt)}`):["All settled ✅"];
 function compute(list=active()){
-  let bal=0;const paid={D:0,V:0},share={D:0,V:0},cats={},catBy={};let loan=0;
+  const net={},paid={},share={},cats={};let total=0;members().forEach(m=>{net[m.id]=0;paid[m.id]=0;share[m.id]=0});
   const rows=list.map(e=>{
-    bal=r2(bal+delta(e));
-    if(e.type==="expense"){paid[e.payer]+=e.amount;share.D+=e.amount*e.dShare;share.V+=e.amount*(1-e.dShare);cats[e.cat]=(cats[e.cat]||0)+e.amount;(catBy[e.cat]??={D:0,V:0})[e.payer]+=e.amount}
-    else loan+=e.type==="loan"?(e.payer==="D"?e.amount:-e.amount):(e.payer==="D"?e.amount:-e.amount);
-    return {e,bal};
+    const f=effect(e);for(const[k,v]of Object.entries(f))net[k]=r2((net[k]||0)+v);
+    if(e.type==="expense"){paid[e.payer]=(paid[e.payer]||0)+e.amount;total+=e.amount;for(const[k,v]of Object.entries(e.shares))share[k]=(share[k]||0)+v;cats[e.cat]=(cats[e.cat]||0)+e.amount}
+    return {e,net:{...net}};
   });
-  return {rows,bal,paid,share,cats,catBy,total:paid.D+paid.V,loan};
+  return {rows,net,paid,share,cats,total,transfers:settle(net)};
+}
+function netPills(n,two){
+  if(two){const t=settle(n);if(!t.length)return `<span class="pill zero">Settled</span>`;const x=t[0];return `<span class="pill ${x.from===members()[0].id?"green":"red"}">${esc(nm(x.from))} → ${esc(nm(x.to))} ${inr(x.amt)}</span>`}
+  const p=Object.entries(n).filter(([,v])=>Math.abs(v)>.004);if(!p.length)return `<span class="pill zero">Settled</span>`;
+  return `<div class="nets">${p.map(([k,v])=>`<span class="pill sm ${v>0?"green":"red"}">${esc(nm(k))} ${v>0?"+":"−"}${inr(Math.abs(v))}</span>`).join("")}</div>`;
 }
 
 /* ---------- render ---------- */
 function render(){
-  const c=compute(),v=verdict(c.bal);
-  $("#hero").className="hero "+v.cls;
-  $("#hero").innerHTML=`<div class="lbl">CURRENT SETTLEMENT</div><div class="big">${c.bal===0?"All settled ✅":c.bal>0?`Vishal pays Devesh ${inr(c.bal)}`:`Devesh pays Vishal ${inr(-c.bal)}`}</div><div class="sub">${c.rows.length} entries · everything since ${fdate(START)} included</div>`;
-  $("#kpis").innerHTML=`<div class="kpi"><span>TOTAL SPENT</span><b>${inr(c.total)}</b></div><div class="kpi"><span>DEVESH PAID</span><b>${inr(c.paid.D)}</b></div><div class="kpi"><span>VISHAL PAID</span><b>${inr(c.paid.V)}</b></div>`;
-  $("#ledger").innerHTML=c.rows.length?[...c.rows].reverse().map(({e,bal})=>{const vv=verdict(bal),ci=CATS[e.type==="expense"?e.cat:"Loan"]||CATS.Other;
-    const sub=e.type==="expense"?`${fdate(e.date)} · ${esc(e.cat)} · paid by ${NAMES[e.payer]}${e.dShare!==.5?` · D ${Math.round(e.dShare*100)}% / V ${Math.round((1-e.dShare)*100)}%`:""}`:`${fdate(e.date)} · ${e.type==="loan"?"Loan":"Repayment"} · ${NAMES[e.payer]} → ${NAMES[e.payer==="D"?"V":"D"]}`;
-    return `<div class="entry" data-id="${esc(e.id)}"><div class="ico" style="background:${ci[1]}22">${e.type==="expense"?ci[0]:e.type==="loan"?"🤝":"💸"}</div><div class="mid"><div class="t">${esc(e.desc||"(no note)")}</div><div class="s">${sub}</div></div><div class="r"><div class="amt">${inr(e.amount)}</div><span class="pill ${vv.cls}">${vv.short}</span></div></div>`}).join(""):`<div class="empty">No entries yet.<br>Tap <b>+</b> to add the first one.</div>`;
+  if(!config)return;
+  const c=compute(),two=members().length===2;
+  $("#hero").className="hero "+(c.transfers.length?"":"zero");
+  $("#hero").innerHTML=`<div class="lbl">CURRENT SETTLEMENT</div>${lines(c.transfers).map(l=>`<div class="line" style="color:${c.transfers.length?"var(--ink)":"var(--green)"}">${esc(l)}</div>`).join("")}<div class="sub">${c.rows.length} entries · ${members().length} people</div>`;
+  const top=Object.entries(c.paid).sort((a,b)=>b[1]-a[1])[0];
+  $("#kpis").innerHTML=`<div class="kpi"><span>TOTAL SPENT</span><b>${inr(c.total)}</b></div><div class="kpi"><span>ENTRIES</span><b>${c.rows.length}</b></div><div class="kpi"><span>TOP PAYER</span><b>${top&&top[1]>0?esc(nm(top[0])):"-"}</b></div>`;
+  $("#ledger").innerHTML=c.rows.length?[...c.rows].reverse().map(({e,net})=>{const ci=CATS[e.type==="expense"?e.cat:"Loan"]||CATS.Other;
+    const part=e.type==="expense"?Object.keys(e.shares).filter(k=>e.shares[k]>0):[];
+    const sub=e.type==="expense"?`${fdate(e.date)} · ${esc(e.cat)} · paid by ${esc(nm(e.payer))}${part.length<members().length||part.length>2?` · split ${part.length}`:""}`:`${fdate(e.date)} · ${e.type==="loan"?"Loan":"Repayment"} · ${esc(nm(e.payer))} → ${esc(nm(e.to))}`;
+    return `<div class="entry" data-id="${esc(e.id)}"><div class="ico" style="background:${ci[1]}22">${e.type==="expense"?ci[0]:e.type==="loan"?"🤝":"💸"}</div><div class="mid"><div class="t">${esc(e.desc||"(no note)")}</div><div class="s">${sub}</div></div><div class="r"><div class="amt">${inr(e.amount)}</div>${netPills(net,two)}</div></div>`}).join(""):`<div class="empty">No entries yet.<br>Tap <b>+</b> to add the first one.</div>`;
+  saveList(KEY,config.name||"Hisab");
+  $("#since").textContent=`${config.name||"Hisab"} · ${members().map(m=>m.name).join(", ")}`;
+  $("#meChip").textContent=me&&members().some(m=>m.id===me)?"👤 "+nm(me):"👤 Who?";
   renderDash(c);renderPrint(c);
 }
 function renderDash(c){
-  const cats=Object.entries(c.cats).sort((a,b)=>b[1]-a[1]);let ang=0,arcs="";
-  const R=60,C=2*Math.PI*R;let off=0;
-  cats.forEach(([k,v])=>{const f=v/c.total,len=f*C;arcs+=`<circle r="${R}" cx="80" cy="80" fill="none" stroke="${(CATS[k]||CATS.Other)[1]}" stroke-width="26" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 80 80)"/>`;off+=len});
-  const mx=Math.max(c.paid.D,c.paid.V,1),top=c.total?(c.paid.D>=c.paid.V?"Devesh":"Vishal"):"-";
+  const cats=Object.entries(c.cats).sort((a,b)=>b[1]-a[1]);const R=60,C=2*Math.PI*R;let off=0,arcs="";
+  cats.forEach(([k,v])=>{const len=v/c.total*C;arcs+=`<circle r="${R}" cx="80" cy="80" fill="none" stroke="${(CATS[k]||CATS.Other)[1]}" stroke-width="26" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 80 80)"/>`;off+=len});
+  const ppl=[...members()].sort((a,b)=>(c.paid[b.id]||0)-(c.paid[a.id]||0)),mx=Math.max(...ppl.map(m=>c.paid[m.id]||0),1);
   $("#v-dash").innerHTML=`<h2>Spend by category</h2><div class="card donutwrap">${cats.length?`<svg width="160" height="160" viewBox="0 0 160 160">${arcs}<text x="80" y="76" text-anchor="middle" font-size="11" fill="var(--mute)">TOTAL</text><text x="80" y="95" text-anchor="middle" font-size="15" font-weight="800" fill="var(--ink)">${inr(c.total)}</text></svg><div class="legend">${cats.map(([k,v])=>`<div><span><i style="background:${(CATS[k]||CATS.Other)[1]}"></i>${esc(k)}</span><b>${inr(v)} · ${Math.round(v/c.total*100)}%</b></div>`).join("")}</div>`:`<div class="empty" style="width:100%">No expenses yet</div>`}</div>
-  <h2>Who paid the most</h2><div class="card" style="padding:8px 0">${["D","V"].map(p=>`<div class="bar"><div class="nm"><span>${NAMES[p]}${NAMES[p]===top?" 🏆":""}</span><b>${inr(c.paid[p])}</b></div><div class="tr"><div class="fl" style="width:${c.paid[p]/mx*100}%;background:${p==="D"?"#2f4b7c":"#f28e2b"}"></div></div></div>`).join("")}</div>
-  <h2>Fair share check</h2><div class="card"><table><tr><th>Person</th><th class="n">Paid</th><th class="n">Share</th><th class="n">Diff</th></tr>${["D","V"].map(p=>{const d=c.paid[p]-c.share[p];return `<tr><td>${NAMES[p]}</td><td class="n">${inr(c.paid[p])}</td><td class="n">${inr(c.share[p])}</td><td class="n" style="color:var(${d>=0?"--green":"--red"});font-weight:700">${d>=0?"+":"−"}${inr(Math.abs(d))}</td></tr>`}).join("")}</table></div>
-  <h2>Category table</h2><div class="card"><table><tr><th>Category</th><th class="n">Devesh</th><th class="n">Vishal</th><th class="n">Total</th></tr>${cats.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${inr(c.catBy[k].D)}</td><td class="n">${inr(c.catBy[k].V)}</td><td class="n"><b>${inr(v)}</b></td></tr>`).join("")||'<tr><td colspan="4" class="empty">—</td></tr>'}</table></div>`;
+  <h2>Who paid the most</h2><div class="card" style="padding:8px 0">${ppl.map((m,i)=>`<div class="bar"><div class="nm"><span>${esc(m.name)}${i===0&&c.paid[m.id]>0?" 🏆":""}</span><b>${inr(c.paid[m.id]||0)}</b></div><div class="tr"><div class="fl" style="width:${(c.paid[m.id]||0)/mx*100}%;background:${col(m.id)}"></div></div></div>`).join("")}</div>
+  <h2>Fair share check</h2><div class="card"><table><tr><th>Person</th><th class="n">Paid</th><th class="n">Share</th><th class="n">Net</th></tr>${members().map(m=>{const d=c.net[m.id]||0;return `<tr><td>${esc(m.name)}</td><td class="n">${inr(c.paid[m.id]||0)}</td><td class="n">${inr(c.share[m.id]||0)}</td><td class="n" style="color:var(${d>=0?"--green":"--red"});font-weight:700">${d>=0?"+":"−"}${inr(Math.abs(d))}</td></tr>`}).join("")}</table></div>
+  <h2>Category table</h2><div class="card"><table><tr><th>Category</th><th class="n">Total</th><th class="n">%</th></tr>${cats.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n"><b>${inr(v)}</b></td><td class="n">${Math.round(v/c.total*100)}%</td></tr>`).join("")||'<tr><td colspan="3" class="empty">—</td></tr>'}</table></div>`;
 }
 function renderLogs(){
   $("#v-logs").innerHTML=`<h2>Activity log</h2><div class="card">${logs.length?logs.map(l=>`<div class="log"><b>${esc(l.who)}</b> ${esc(l.action)}: ${esc(l.text)}<small>${new Date(l.at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</small></div>`).join(""):'<div class="empty">No activity yet</div>'}</div>`;
 }
 function renderPrint(c){
-  const v=verdict(c.bal);
-  $("#printArea").innerHTML=`<h1>Shared Expense Summary</h1><div>Devesh &amp; Vishal · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div>
-  <h4>Ledger</h4><table><tr><th>Date</th><th>What</th><th>Category</th><th>Paid by</th><th class="n">Amount</th><th>Balance</th></tr>${c.rows.map(({e,bal})=>{const vv=verdict(bal);return `<tr><td>${fdate(e.date)}</td><td>${esc(e.desc)}</td><td>${e.type==="expense"?esc(e.cat):e.type==="loan"?"Loan":"Repayment"}</td><td>${NAMES[e.payer]}</td><td class="n">${inr(e.amount)}</td><td class="${vv.cls==="red"?"r":vv.cls==="green"?"g":""}">${vv.short}</td></tr>`}).join("")}</table>
-  <h4>Totals</h4><table><tr><th>Person</th><th class="n">Paid</th><th class="n">Share</th></tr><tr><td>Devesh</td><td class="n">${inr(c.paid.D)}</td><td class="n">${inr(c.share.D)}</td></tr><tr><td>Vishal</td><td class="n">${inr(c.paid.V)}</td><td class="n">${inr(c.share.V)}</td></tr></table>
-  <div class="box">FINAL SETTLEMENT: ${c.bal===0?"All settled":c.bal>0?`Vishal pays Devesh ${inr(c.bal)}`:`Devesh pays Vishal ${inr(-c.bal)}`}</div>
+  const two=members().length===2;
+  const bal=n=>{const t=settle(n);return t.length?(two?`${nm(t[0].from)} → ${nm(t[0].to)} ${inr(t[0].amt)}`:Object.entries(n).filter(([,v])=>Math.abs(v)>.004).map(([k,v])=>`${nm(k)} ${v>0?"+":"-"}${inr(Math.abs(v))}`).join(", ")):"Settled"};
+  $("#printArea").innerHTML=`<h1>Shared Expense Summary</h1><div>${esc(config.name||"")} · ${members().map(m=>esc(m.name)).join(", ")} · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div>
+  <h4>Ledger</h4><table><tr><th>Date</th><th>What</th><th>Category</th><th>Paid by</th><th class="n">Amount</th><th>Balance</th></tr>${c.rows.map(({e,net})=>`<tr><td>${fdate(e.date)}</td><td>${esc(e.desc)}</td><td>${e.type==="expense"?esc(e.cat):e.type==="loan"?"Loan":"Repayment"}</td><td>${esc(nm(e.payer))}</td><td class="n">${inr(e.amount)}</td><td>${esc(bal(net))}</td></tr>`).join("")}</table>
+  <h4>Totals</h4><table><tr><th>Person</th><th class="n">Paid</th><th class="n">Share</th><th class="n">Net</th></tr>${members().map(m=>`<tr><td>${esc(m.name)}</td><td class="n">${inr(c.paid[m.id]||0)}</td><td class="n">${inr(c.share[m.id]||0)}</td><td class="n">${(c.net[m.id]||0)>=0?"+":"-"}${inr(Math.abs(c.net[m.id]||0))}</td></tr>`).join("")}</table>
+  <div class="box">FINAL SETTLEMENT<br>${lines(c.transfers).map(esc).join("<br>")}</div>
   <h4>Spending by category</h4><table><tr><th>Category</th><th class="n">Total</th><th class="n">%</th></tr>${Object.entries(c.cats).sort((a,b)=>b[1]-a[1]).map(([k,x])=>`<tr><td>${esc(k)}</td><td class="n">${inr(x)}</td><td class="n">${Math.round(x/c.total*100)}%</td></tr>`).join("")}</table>`;
 }
 
 /* ---------- add / edit sheet ---------- */
 let F=null;
+const eqVals=(ids,a)=>{const p=Math.round((+a||0)*100),b=Math.floor(p/ids.length),r=p-b*ids.length;return Object.fromEntries(ids.map((k,i)=>[k,(b+(i<r?1:0))/100]))};
 function openSheet(e){
-  F=e?{...e,amount:String(e.amount),mode:e.dShare===.5?"eq":e.dShare===1?"D":e.dShare===0?"V":"c",pct:Math.round(e.dShare*100),edit:true}
-    :{id:"e"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type:"expense",date:today(),desc:"",cat:"Food",payer:me||"D",amount:"",dShare:.5,mode:"eq",pct:50,edit:false};
+  const ids=members().map(m=>m.id);
+  if(e){const part=e.type==="expense"?ids.filter(k=>(e.shares[k]||0)>0):[];const eq=eqVals(part,e.amount);
+    const isEq=e.type==="expense"&&part.every(k=>Math.abs((e.shares[k]||0)-eq[k])<.011);
+    F={...e,amount:String(e.amount),part:new Set(part),mode:isEq?"eq":"ex",vals:{...(e.shares||{})},edit:true}}
+  else F={id:"e"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type:"expense",date:today(),desc:"",cat:"Food",payer:ids.includes(me)?me:ids[0],to:ids.find(k=>k!==(ids.includes(me)?me:ids[0])),amount:"",part:new Set(ids),mode:"eq",vals:{},edit:false};
   drawSheet();$("#sheetBg").classList.add("open");
 }
 const closeSheet=()=>$("#sheetBg").classList.remove("open");
+function calcShares(){
+  const a=Math.round((parseFloat(F.amount)||0)*100),ids=members().map(m=>m.id).filter(k=>F.part.has(k));
+  if(!ids.length)return{err:"Pick at least one person to split between"};
+  if(F.mode==="eq"){const o=eqVals(ids,F.amount);return{shares:o}}
+  if(F.mode==="pct"){const p=ids.map(k=>+F.vals[k]||0),t=p.reduce((x,y)=>x+y,0);if(Math.abs(t-100)>.01)return{err:`Percentages add up to ${r2(t)}%, need 100%`};
+    const q=p.map(x=>Math.floor(a*x/100));let rem=a-q.reduce((x,y)=>x+y,0);for(let i=0;rem>0;i=(i+1)%ids.length){q[i]++;rem--}return{shares:Object.fromEntries(ids.map((k,i)=>[k,q[i]/100]))}}
+  const v=ids.map(k=>Math.round((+F.vals[k]||0)*100)),t=v.reduce((x,y)=>x+y,0);
+  if(t!==a)return{err:`Amounts add up to ${inr(t/100)}, need ${inr(a/100)}`};return{shares:Object.fromEntries(ids.map((k,i)=>[k,v[i]/100]))};
+}
 function curEntry(){
-  const amt=parseFloat(F.amount)||0;
-  const d=F.type!=="expense"?.5:F.mode==="eq"?.5:F.mode==="D"?1:F.mode==="V"?0:Math.min(100,Math.max(0,+F.pct||0))/100;
-  return {id:F.id,type:F.type,date:F.date,desc:F.desc.trim(),cat:F.type==="expense"?F.cat:"Loan",payer:F.payer,amount:r2(amt),dShare:d,createdBy:F.createdBy||me,createdAt:F.createdAt||Date.now(),updatedAt:Date.now(),deleted:false};
+  const amt=r2(parseFloat(F.amount)||0),b={id:F.id,type:F.type,date:F.date,desc:F.desc.trim(),payer:F.payer,amount:amt,createdBy:F.createdBy||me,createdAt:F.createdAt||Date.now(),updatedAt:Date.now(),deleted:false};
+  if(F.type==="expense"){const r=calcShares();return {...b,cat:F.cat,shares:r.shares||{},err:r.err}}
+  return {...b,cat:"Loan",to:F.to,err:F.to===F.payer?"Pick two different people":""};
 }
 function previewHTML(){
   const e=curEntry();if(!e.amount)return `<div class="preview zero">Enter an amount to see the calculation.</div>`;
-  const others=active().filter(x=>x.id!==e.id),before=compute(others).bal,after=r2(before+delta(e)),v=verdict(after);
-  let line="";
-  if(e.type==="expense")line=`Devesh's share <b>${inr(e.amount*e.dShare)}</b> · Vishal's share <b>${inr(e.amount*(1-e.dShare))}</b><br>`;
-  else line=`${NAMES[e.payer]} → ${NAMES[e.payer==="D"?"V":"D"]}: <b>${inr(e.amount)}</b><br>`;
-  return `<div class="preview ${v.cls}">${line}After this entry: <b>${v.txt}</b></div>`;
+  if(e.err)return `<div class="preview red">${esc(e.err)}</div>`;
+  const others=active().filter(x=>x.id!==e.id),after=settle(compute([...others,e]).net);
+  const l=e.type==="expense"?`<b>Shares:</b> ${Object.entries(e.shares).map(([k,v])=>`${esc(nm(k))} ${inr(v)}`).join(" · ")}`:`${esc(nm(e.payer))} → ${esc(nm(e.to))}: <b>${inr(e.amount)}</b>`;
+  return `<div class="preview ${after.length?"red":"green"}">${l}<br><b>After this entry:</b><br>${lines(after).map(esc).join("<br>")}</div>`;
 }
+const chipRow=(id,sel,multi)=>`<div class="cats" id="${id}">${members().map(m=>`<button data-v="${esc(m.id)}" class="${(multi?F.part.has(m.id):sel===m.id)?"on":""}">${esc(m.name)}</button>`).join("")}</div>`;
 function drawSheet(){
-  const lblPaid=F.type==="expense"?"Paid by":F.type==="loan"?"Given by":"Paid back by";
+  const exp=F.type==="expense",ids=members().map(m=>m.id).filter(k=>F.part.has(k));
   $("#sheet").innerHTML=`<h3>${F.edit?"Edit entry":"Add entry"}</h3>
   <div class="seg" id="s-type">${[["expense","Expense"],["loan","Loan"],["repay","Repayment"]].map(([k,t])=>`<button data-v="${k}" class="${F.type===k?"on":""}">${t}</button>`).join("")}</div>
   <label class="f">Amount (₹)</label><input class="amount" id="f-amt" type="number" inputmode="decimal" min="0" step="any" placeholder="0" value="${esc(F.amount)}">
   <label class="f">What for</label><input type="text" id="f-desc" placeholder="e.g. Paneer, Petrol, Dinner" value="${esc(F.desc)}">
-  <label class="f">${lblPaid}</label><div class="seg" id="s-payer">${["D","V"].map(p=>`<button data-v="${p}" class="${F.payer===p?"on":""}">${NAMES[p]}</button>`).join("")}</div>
-  ${F.type==="expense"?`<label class="f">Category</label><div class="cats" id="s-cat">${Object.keys(CATS).filter(k=>k!=="Loan").map(k=>`<button data-v="${k}" class="${F.cat===k?"on":""}">${CATS[k][0]} ${k}</button>`).join("")}</div>
-  <label class="f">Split</label><div class="seg" id="s-mode">${[["eq","50/50"],["D","Devesh all"],["V","Vishal all"],["c","Custom"]].map(([k,t])=>`<button data-v="${k}" class="${F.mode===k?"on":""}">${t}</button>`).join("")}</div>
-  ${F.mode==="c"?`<label class="f">Devesh's share %  (Vishal gets the rest)</label><input type="number" id="f-pct" inputmode="decimal" min="0" max="100" value="${esc(F.pct)}">`:""}`:""}
+  <label class="f">${exp?"Paid by":F.type==="loan"?"Given by":"Paid back by"}</label>${chipRow("s-payer",F.payer)}
+  ${exp?`<label class="f">Category</label><div class="cats" id="s-cat">${Object.keys(CATS).filter(k=>k!=="Loan").map(k=>`<button data-v="${k}" class="${F.cat===k?"on":""}">${CATS[k][0]} ${k}</button>`).join("")}</div>
+  <label class="f">Split between (tap to include or exclude)</label>${chipRow("s-part",null,true)}
+  <label class="f">How to split</label><div class="seg" id="s-mode">${[["eq","Equal"],["pct","Custom %"],["ex","Exact ₹"]].map(([k,t])=>`<button data-v="${k}" class="${F.mode===k?"on":""}">${t}</button>`).join("")}</div>
+  ${F.mode!=="eq"?ids.map(k=>`<div class="shr"><span>${esc(nm(k))}</span><input type="number" inputmode="decimal" step="any" data-k="${esc(k)}" value="${esc(F.vals[k]??"")}" placeholder="${F.mode==="pct"?"%":"₹"}"></div>`).join(""):""}`
+  :`<label class="f">Paid to / received by</label>${chipRow("s-to",F.to)}`}
   <label class="f">Date</label><input type="date" id="f-date" value="${esc(F.date)}">
   <div id="prev">${previewHTML()}</div>
   <div class="row">${F.edit?`<button class="btn danger" id="f-del">🗑</button>`:""}<button class="btn ghost" id="f-cancel">Cancel</button><button class="btn" id="f-save">Save</button></div>`;
@@ -286,59 +347,112 @@ function drawSheet(){
   $("#f-amt").oninput=e=>{F.amount=e.target.value;rp()};
   $("#f-desc").oninput=e=>{F.desc=e.target.value};
   $("#f-date").onchange=e=>{F.date=e.target.value;rp()};
-  const pc=$("#f-pct");if(pc)pc.oninput=e=>{F.pct=e.target.value;rp()};
+  document.querySelectorAll(".shr input").forEach(i=>i.oninput=e=>{F.vals[e.target.dataset.k]=e.target.value;rp()});
   const seg=(id,fn)=>{const el=$(id);el&&el.querySelectorAll("button").forEach(b=>b.onclick=()=>{fn(b.dataset.v);drawSheet()})};
-  seg("#s-type",v=>F.type=v);seg("#s-payer",v=>F.payer=v);seg("#s-cat",v=>F.cat=v);seg("#s-mode",v=>F.mode=v);
-  $("#f-cancel").onclick=closeSheet;
-  $("#f-save").onclick=saveEntry;
+  seg("#s-type",v=>{F.type=v;if(F.to===F.payer)F.to=members().map(m=>m.id).find(k=>k!==F.payer)});
+  seg("#s-payer",v=>{F.payer=v;if(F.to===v)F.to=members().map(m=>m.id).find(k=>k!==v)});
+  seg("#s-to",v=>F.to=v);seg("#s-cat",v=>F.cat=v);
+  seg("#s-part",v=>{F.part.has(v)?(F.part.size>1&&F.part.delete(v)):F.part.add(v);fillVals()});
+  seg("#s-mode",v=>{F.mode=v;fillVals()});
+  $("#f-cancel").onclick=closeSheet;$("#f-save").onclick=saveEntry;
   const del=$("#f-del");if(del)del.onclick=deleteEntry;
 }
-const sumText=e=>`${e.type==="expense"?"":(e.type==="loan"?"Loan: ":"Repayment: ")}${e.desc||"(no note)"} ${inr(e.amount)} by ${NAMES[e.payer]}${e.type==="expense"&&e.dShare!==.5?` (D ${Math.round(e.dShare*100)}%)`:""}`;
+function fillVals(){ // prefill custom boxes with an equal split
+  const ids=members().map(m=>m.id).filter(k=>F.part.has(k));
+  if(F.mode==="pct"){const b=Math.floor(10000/ids.length)/100;F.vals=Object.fromEntries(ids.map((k,i)=>[k,i===0?r2(100-b*(ids.length-1)):b]))}
+  else if(F.mode==="ex")F.vals=eqVals(ids,F.amount);
+}
+const sumText=e=>e.type==="expense"?`${e.desc||"(no note)"} ${inr(e.amount)} paid by ${nm(e.payer)}, split ${Object.keys(e.shares).filter(k=>e.shares[k]>0).map(nm).join("/")}`:`${e.type==="loan"?"Loan":"Repayment"}: ${e.desc||""} ${inr(e.amount)} ${nm(e.payer)} → ${nm(e.to)}`;
 async function saveEntry(){
   const e=curEntry();
-  if(!me){toast("Pick who you are first");$("#meBg").classList.add("open");return}
+  if(!me||!members().some(m=>m.id===me)){toast("Pick who you are first");openMe();return}
   if(!e.amount||e.amount<=0){toast("Enter an amount");return}
   if(!e.date){toast("Pick a date");return}
-  try{
-    await store.save(e);
-    await store.log({who:NAMES[me],action:F.edit?"edited":"added",text:sumText(e),at:Date.now(),entryId:e.id});
-    closeSheet();toast(F.edit?"Entry updated":"Entry added");
-  }catch(err){showErr(err)}
+  if(e.err){toast(e.err);return}
+  delete e.err;
+  try{await store.save(e);await store.log({who:nm(me),action:F.edit?"edited":"added",text:sumText(e),at:Date.now(),entryId:e.id});closeSheet();toast(F.edit?"Entry updated":"Entry added")}catch(err){showErr(err)}
 }
 async function deleteEntry(){
   if(!confirm("Delete this entry? It stays in the log."))return;
-  const e={...curEntry(),deleted:true};
-  try{await store.save(e);await store.log({who:NAMES[me],action:"deleted",text:sumText(e),at:Date.now(),entryId:e.id});closeSheet();toast("Entry deleted")}catch(err){showErr(err)}
+  const e={...curEntry(),deleted:true};delete e.err;
+  try{await store.save(e);await store.log({who:nm(me),action:"deleted",text:sumText(e),at:Date.now(),entryId:e.id});closeSheet();toast("Entry deleted")}catch(err){showErr(err)}
+}
+
+/* ---------- group settings ---------- */
+function openSettings(){
+  const ms=members().map(m=>({...m}));let name=config.name||"";
+  const draw=()=>{$("#sheet").innerHTML=`<h3>Group settings</h3><label class="f">Group name</label><input type="text" id="g-name" value="${esc(name)}">
+  <label class="f">People (rename anyone, or add more)</label>${ms.map((m,i)=>`<div class="shr"><span style="flex:0 0 22px;color:var(--mute)">${i+1}</span><input type="text" data-i="${i}" value="${esc(m.name)}" style="width:100%!important"></div>`).join("")}
+  ${ms.length<10?`<div class="row"><button class="btn ghost" id="g-add">+ Add person</button></div>`:""}
+  <div class="row"><button class="btn ghost" id="g-cancel">Cancel</button><button class="btn" id="g-save">Save</button></div>
+  <div class="row"><button class="btn danger" id="g-out" style="flex:1">Switch hisab / Log out</button></div>
+  <p style="color:var(--mute);font-size:12px">People can be renamed or added, but not removed once they have entries.</p>`;
+    $("#g-name").oninput=e=>name=e.target.value;
+    document.querySelectorAll("[data-i]").forEach(i=>i.oninput=e=>ms[+e.target.dataset.i].name=e.target.value);
+    $("#g-cancel").onclick=closeSheet;$("#g-out").onclick=logout;
+    const add=$("#g-add");if(add)add.onclick=()=>{ms.push({id:"m"+Date.now().toString(36),name:"Person "+(ms.length+1)});draw()};
+    $("#g-save").onclick=async()=>{if(ms.some(m=>!m.name.trim()))return toast("Every person needs a name");
+      if(new Set(ms.map(m=>m.name.trim().toLowerCase())).size!==ms.length)return toast("Names must be different");
+      try{await store.saveMeta({name:name.trim()||"Our Hisab",members:ms.map(m=>({id:m.id,name:m.name.trim()})),createdAt:config.createdAt||Date.now()});
+        await store.log({who:nm(me)||"Someone",action:"updated",text:"group settings",at:Date.now()});closeSheet();toast("Saved")}catch(e){showErr(e)}}};
+  draw();$("#sheetBg").classList.add("open");
+}
+
+/* ---------- setup (new hisab) ---------- */
+function showSetup(){
+  $("#welcome").style.display="none";$("#main").style.display="none";$("#setup").style.display="block";
+  const sel=$("#su-n");if(!sel.options.length){for(let i=2;i<=10;i++)sel.add(new Option(i+" people",i));}
+  const drawN=()=>{const n=+sel.value,old=[...document.querySelectorAll("#su-names input")].map(i=>i.value);
+    $("#su-names").innerHTML=Array.from({length:n},(_,i)=>`<label class="f">Person ${i+1}</label><input type="text" value="${esc(old[i]||"")}" placeholder="Name ${i+1}">`).join("")};
+  sel.onchange=drawN;drawN();
+  $("#su-go").onclick=async()=>{const names=[...document.querySelectorAll("#su-names input")].map(i=>i.value.trim());
+    if(names.some(n=>!n))return toast("Enter every name");if(new Set(names.map(n=>n.toLowerCase())).size!==names.length)return toast("Names must be different");
+    await store.saveMeta({name:$("#su-name").value.trim()||"Our Hisab",members:names.map((n,i)=>({id:"m"+(i+1),name:n})),createdAt:Date.now()});
+    $("#setup").style.display="none";$("#main").style.display="block"};
 }
 
 /* ---------- wiring ---------- */
-function setMe(m){me=m;try{localStorage.setItem("hisab_me",m)}catch{}$("#meChip").textContent="👤 "+NAMES[m];$("#meBg").classList.remove("open")}
+function openMe(){
+  $("#meList").innerHTML=members().map(m=>`<button class="btn" data-me="${esc(m.id)}" style="min-width:45%">I'm ${esc(m.name)}</button>`).join("");
+  document.querySelectorAll("[data-me]").forEach(b=>b.onclick=()=>{me=b.dataset.me;lset("hisab_me_"+KEY,me);$("#meBg").classList.remove("open");render()});
+  $("#meBg").classList.add("open");
+}
 function showView(v){document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));document.querySelectorAll("nav .tab[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===v));$("#hero").style.display=v==="home"?"":"none";scrollTo(0,0)}
-async function start(){
-  $("#welcome").style.display="none";$("#main").style.display="block";
-  $("#since").textContent="Devesh & Vishal · since "+fdate(START);
-  $("#meChip").textContent=me?"👤 "+NAMES[me]:"👤 Who?";
-  $("#meChip").onclick=()=>$("#meBg").classList.add("open");
-  document.querySelectorAll("[data-me]").forEach(b=>b.onclick=()=>setMe(b.dataset.me));
-  if(!me)$("#meBg").classList.add("open");
-  await initStore();
-  store.onEntries(a=>{entries=a;render()});
-  store.onLogs(a=>{logs=a;renderLogs()});
+let wired=false;
+function decide(){
+  if(!gotMeta||!gotEntries)return;
+  if(!config){
+    if(entries.length){config={name:"Devesh & Vishal",members:DEFAULT_MEMBERS,createdAt:Date.now()};store.saveMeta(config).catch(showErr)}
+    else{showSetup();return}
+  }
+  $("#setup").style.display="none";$("#main").style.display="block";
+  if(!wired){wired=true;wire()}
+  if(!me||!members().some(m=>m.id===me))openMe();
+  render();
+}
+function wire(){
   document.querySelectorAll("nav .tab[data-v]").forEach(b=>b.onclick=()=>showView(b.dataset.v));
-  $("#settleTab").onclick=()=>{showView("home");scrollTo({top:0,behavior:"smooth"});const c=compute();toast(verdict(c.bal).txt)};
+  $("#settleTab").onclick=()=>{showView("home");toast(lines(compute().transfers).join(" · "))};
   $("#fab").onclick=()=>openSheet();
-  $("#ledger").onclick=ev=>{const el=ev.target.closest(".entry");if(!el)return;const e=entries.find(x=>x.id===el.dataset.id);if(e)openSheet(e)};
+  $("#meChip").onclick=openMe;$("#cfgBtn").onclick=openSettings;
+  $("#ledger").onclick=ev=>{const el=ev.target.closest(".entry");if(!el)return;const e=entries.map(norm).find(x=>x.id===el.dataset.id);if(e)openSheet(e)};
   $("#sheetBg").onclick=ev=>{if(ev.target.id==="sheetBg")closeSheet()};
   $("#shareBtn").onclick=async()=>{const u=location.href;try{if(navigator.share){await navigator.share({title:"Hisab",url:u})}else{await navigator.clipboard.writeText(u);toast("Private link copied")}}catch{try{await navigator.clipboard.writeText(u);toast("Private link copied")}catch{prompt("Copy this private link:",u)}}};
   $("#pdfBtn").onclick=()=>{render();print()};
-  render();renderLogs();
+}
+async function start(){
+  $("#welcome").style.display="none";
+  await initStore();
+  store.onMeta(m=>{config=m;gotMeta=true;decide();if(config&&wired)render()});
+  store.onEntries(a=>{entries=a;gotEntries=true;decide();if(config&&wired)render()});
+  store.onLogs(a=>{logs=a;renderLogs()});
 }
 if(KEY){start()}else{
   $("#welcome").style.display="block";
+  const sv=getList();if(sv.length)$("#saved").innerHTML='<h2 style="text-align:left">Your hisabs</h2>'+sv.map(x=>`<button class="btn ghost" data-k="${esc(x.key)}" style="width:100%;margin-bottom:6px;text-align:left">📒 ${esc(x.name)}</button>`).join("");
+  document.querySelectorAll("#saved [data-k]").forEach(b=>b.onclick=()=>openSaved(b.dataset.k));
   $("#createBtn").onclick=()=>{setKey(newKey());KEY=getKey();start()};
   $("#openBtn").onclick=()=>{const m=$("#pasteLink").value.match(/k=([A-Za-z0-9_-]{24,})/);if(!m)return toast("That link has no key");setKey(m[1]);KEY=m[1];start()};
 }
 addEventListener("hashchange",()=>{const k=getKey();if(k&&k!==KEY)location.reload()});
 </script>
-</body>
-</html>

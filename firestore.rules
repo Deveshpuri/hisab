@@ -8,6 +8,10 @@ service cloud.firestore {
       allow get, list, create, update: if key.size() >= 24;
       allow delete: if false;                       // entries are soft-deleted
     }
+    match /hisabs/{key}/meta/{id} {
+      allow get, list, create, update: if key.size() >= 24;   // group name + people
+      allow delete: if false;
+    }
     match /hisabs/{key}/logs/{id} {
       allow get, list, create: if key.size() >= 24;
       allow update, delete: if false;               // log is append-only
