@@ -96,6 +96,10 @@ td.n,th.n{text-align:right}
 .pill.sm{font-size:10px;padding:2px 6px;margin:0}
 .line{padding:4px 0;font-size:18px;font-weight:800}
 .shr{display:flex;align-items:center;gap:8px;margin-top:6px}.shr span{flex:1}.shr input{width:110px!important;padding:9px!important}
+.mbar{display:flex;gap:8px;margin-bottom:12px}
+.mbar select{flex:1;width:auto;padding:10px 12px;font-size:14px;font-weight:650}
+.xbtn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.msum{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:14px;line-height:1.5}
 .view{display:none}.view.on{display:block}
 #printArea{display:none}
 @media print{
@@ -138,8 +142,10 @@ td.n,th.n{text-align:right}
 
 <div class="wrap" id="app">
   <div class="hero" id="hero"></div>
+  <div class="mbar" id="mbar"><select id="monthSel"></select><button class="xbtn" id="xlsBtn">⬇ Excel</button></div>
   <div class="view on" id="v-home">
     <div class="kpis" id="kpis"></div>
+    <div id="msum"></div>
     <h2>Ledger</h2>
     <div class="card" id="ledger"></div>
   </div>
@@ -221,6 +227,7 @@ function logout(){if(!confirm("Log out of this hisab? You can open it again from
 function openSaved(k){lset("hisab_key",k);location.hash="k="+k;location.reload()}
 
 /* ---------- state ---------- */
+let monthSel="all";
 let config=null,entries=[],logs=[],me=lget("hisab_me_"+KEY),gotMeta=false,gotEntries=false;
 const members=()=>config?config.members:DEFAULT_MEMBERS;
 const nm=id=>(members().find(m=>m.id===id)||{name:id}).name;
@@ -255,30 +262,59 @@ function netPills(n,two){
   return `<div class="nets">${p.map(([k,v])=>`<span class="pill sm ${v>0?"green":"red"}">${esc(nm(k))} ${v>0?"+":"−"}${inr(Math.abs(v))}</span>`).join("")}</div>`;
 }
 
+/* ---------- month filter + Excel export ---------- */
+const monthLabel=m=>{const [y,mo]=m.split("-");return new Date(+y,+mo-1,1).toLocaleString("en-IN",{month:"short",year:"numeric"})};
+function fillMonths(months){
+  const sel=$("#monthSel"),sig=months.join(",")+"|"+monthSel;if(sel.dataset.sig===sig)return;sel.dataset.sig=sig;
+  sel.innerHTML=`<option value="all">All time</option>`+months.map(m=>`<option value="${m}">${esc(monthLabel(m))}</option>`).join("");sel.value=monthSel;
+}
+async function exportXlsx(){
+  if(!window.XLSX){try{await new Promise((ok,no)=>{const x=document.createElement("script");x.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";x.onload=ok;x.onerror=no;document.head.appendChild(x)})}catch{return toast("Could not load the Excel library. Check your internet")}}
+  const c=compute(),ms=members(),W=XLSX.utils,wb=W.book_new();
+  const sheet=(name,rows,w)=>{const ws=W.aoa_to_sheet(rows);ws["!cols"]=w.map(x=>({wch:x}));W.book_append_sheet(wb,ws,name)};
+  const bal=n=>{const t=settle(n);return t.length?t.map(x=>`${nm(x.from)} pays ${nm(x.to)} ${r2(x.amt)}`).join("; "):"Settled"};
+  sheet("Ledger",[["Date","Month","Description","Type","Category","Paid by","Paid to","Amount",...ms.map(m=>"Share: "+m.name),"Balance after this entry"],
+    ...c.rows.map(({e,net})=>[e.date,e.date.slice(0,7),e.desc||"",e.type==="expense"?"Expense":e.type==="loan"?"Loan":"Repayment",e.type==="expense"?e.cat:"Loan",nm(e.payer),e.type==="expense"?"":nm(e.to),e.amount,...ms.map(m=>e.type==="expense"?(e.shares[m.id]||0):""),bal(net)])],
+    [12,9,28,11,12,14,14,11,...ms.map(()=>14),40]);
+  sheet("Summary",[["Person","Paid for expenses","Their share","Net (+ is owed, - owes)"],...ms.map(m=>[m.name,r2(c.paid[m.id]||0),r2(c.share[m.id]||0),r2(c.net[m.id]||0)]),[],["Settlement"],...lines(c.transfers).map(l=>[l]),[],["Total spent",r2(c.total)]],[24,18,14,22]);
+  sheet("Categories",[["Category","Total","% of spend"],...Object.entries(c.cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,r2(v),c.total?Math.round(v/c.total*1000)/10:0])],[18,14,12]);
+  const mon=[...new Set(c.rows.map(r=>r.e.date.slice(0,7)))].sort();
+  sheet("Monthly",[["Month","Entries","Total spent",...ms.map(m=>"Paid: "+m.name),"Settlement for this month alone"],
+    ...mon.map(m=>{const cm=compute(active().filter(e=>e.date.startsWith(m)));return [monthLabel(m),c.rows.filter(r=>r.e.date.startsWith(m)).length,r2(cm.total),...ms.map(x=>r2(cm.paid[x.id]||0)),lines(cm.transfers).join("; ")]})],[12,9,14,...ms.map(()=>14),46]);
+  W.book_append_sheet(wb,W.aoa_to_sheet([["Hisab: "+(config.name||"")],["Exported",new Date().toLocaleString("en-IN")],["People",ms.map(m=>m.name).join(", ")]]),"About");
+  XLSX.writeFile(wb,`Hisab_${(config.name||"export").replace(/[^A-Za-z0-9]+/g,"_")}_${today()}.xlsx`);toast("Excel downloaded");
+}
+
 /* ---------- render ---------- */
 function render(){
   if(!config)return;
   const c=compute(),two=members().length===2;
+  const months=[...new Set(active().map(e=>e.date.slice(0,7)))].sort().reverse();
+  if(monthSel!=="all"&&!months.includes(monthSel))monthSel="all";
+  fillMonths(months);
+  const inM=e=>monthSel==="all"||e.date.startsWith(monthSel);
+  const cm=compute(active().filter(inM)),vrows=c.rows.filter(r=>inM(r.e));
   $("#hero").className="hero "+(c.transfers.length?"":"zero");
   $("#hero").innerHTML=`<div class="lbl">CURRENT SETTLEMENT</div>${lines(c.transfers).map(l=>`<div class="line" style="color:${c.transfers.length?"var(--ink)":"var(--green)"}">${esc(l)}</div>`).join("")}<div class="sub">${c.rows.length} entries · ${members().length} people</div>`;
-  const top=Object.entries(c.paid).sort((a,b)=>b[1]-a[1])[0];
-  $("#kpis").innerHTML=`<div class="kpi"><span>TOTAL SPENT</span><b>${inr(c.total)}</b></div><div class="kpi"><span>ENTRIES</span><b>${c.rows.length}</b></div><div class="kpi"><span>TOP PAYER</span><b>${top&&top[1]>0?esc(nm(top[0])):"-"}</b></div>`;
-  $("#ledger").innerHTML=c.rows.length?[...c.rows].reverse().map(({e,net})=>{const ci=CATS[e.type==="expense"?e.cat:"Loan"]||CATS.Other;
+  const top=Object.entries(cm.paid).sort((a,b)=>b[1]-a[1])[0];
+  $("#kpis").innerHTML=`<div class="kpi"><span>${monthSel==="all"?"TOTAL SPENT":"SPENT IN MONTH"}</span><b>${inr(cm.total)}</b></div><div class="kpi"><span>ENTRIES</span><b>${vrows.length}</b></div><div class="kpi"><span>TOP PAYER</span><b>${top&&top[1]>0?esc(nm(top[0])):"-"}</b></div>`;
+  $("#msum").innerHTML=monthSel==="all"?"":`<div class="msum"><b>${esc(monthLabel(monthSel))} only</b><br>Spent ${inr(cm.total)} · if you settled just this month:<br>${lines(cm.transfers).map(esc).join("<br>")}</div>`;
+  $("#ledger").innerHTML=vrows.length?[...vrows].reverse().map(({e,net})=>{const ci=CATS[e.type==="expense"?e.cat:"Loan"]||CATS.Other;
     const part=e.type==="expense"?Object.keys(e.shares).filter(k=>e.shares[k]>0):[];
     const sub=e.type==="expense"?`${fdate(e.date)} · ${esc(e.cat)} · paid by ${esc(nm(e.payer))}${part.length<members().length||part.length>2?` · split ${part.length}`:""}`:`${fdate(e.date)} · ${e.type==="loan"?"Loan":"Repayment"} · ${esc(nm(e.payer))} → ${esc(nm(e.to))}`;
     return `<div class="entry" data-id="${esc(e.id)}"><div class="ico" style="background:${ci[1]}22">${e.type==="expense"?ci[0]:e.type==="loan"?"🤝":"💸"}</div><div class="mid"><div class="t">${esc(e.desc||"(no note)")}</div><div class="s">${sub}</div></div><div class="r"><div class="amt">${inr(e.amount)}</div>${netPills(net,two)}</div></div>`}).join(""):`<div class="empty">No entries yet.<br>Tap <b>+</b> to add the first one.</div>`;
   saveList(KEY,config.name||"Hisab");
   $("#since").textContent=`${config.name||"Hisab"} · ${members().map(m=>m.name).join(", ")}`;
   $("#meChip").textContent=me&&members().some(m=>m.id===me)?"👤 "+nm(me):"👤 Who?";
-  renderDash(c);renderPrint(c);
+  renderDash(cm);renderPrint(c);
 }
 function renderDash(c){
   const cats=Object.entries(c.cats).sort((a,b)=>b[1]-a[1]);const R=60,C=2*Math.PI*R;let off=0,arcs="";
   cats.forEach(([k,v])=>{const len=v/c.total*C;arcs+=`<circle r="${R}" cx="80" cy="80" fill="none" stroke="${(CATS[k]||CATS.Other)[1]}" stroke-width="26" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 80 80)"/>`;off+=len});
   const ppl=[...members()].sort((a,b)=>(c.paid[b.id]||0)-(c.paid[a.id]||0)),mx=Math.max(...ppl.map(m=>c.paid[m.id]||0),1);
-  $("#v-dash").innerHTML=`<h2>Spend by category</h2><div class="card donutwrap">${cats.length?`<svg width="160" height="160" viewBox="0 0 160 160">${arcs}<text x="80" y="76" text-anchor="middle" font-size="11" fill="var(--mute)">TOTAL</text><text x="80" y="95" text-anchor="middle" font-size="15" font-weight="800" fill="var(--ink)">${inr(c.total)}</text></svg><div class="legend">${cats.map(([k,v])=>`<div><span><i style="background:${(CATS[k]||CATS.Other)[1]}"></i>${esc(k)}</span><b>${inr(v)} · ${Math.round(v/c.total*100)}%</b></div>`).join("")}</div>`:`<div class="empty" style="width:100%">No expenses yet</div>`}</div>
+  $("#v-dash").innerHTML=`<h2>Spend by category${monthSel==="all"?"":" · "+esc(monthLabel(monthSel))}</h2><div class="card donutwrap">${cats.length?`<svg width="160" height="160" viewBox="0 0 160 160">${arcs}<text x="80" y="76" text-anchor="middle" font-size="11" fill="var(--mute)">TOTAL</text><text x="80" y="95" text-anchor="middle" font-size="15" font-weight="800" fill="var(--ink)">${inr(c.total)}</text></svg><div class="legend">${cats.map(([k,v])=>`<div><span><i style="background:${(CATS[k]||CATS.Other)[1]}"></i>${esc(k)}</span><b>${inr(v)} · ${Math.round(v/c.total*100)}%</b></div>`).join("")}</div>`:`<div class="empty" style="width:100%">No expenses yet</div>`}</div>
   <h2>Who paid the most</h2><div class="card" style="padding:8px 0">${ppl.map((m,i)=>`<div class="bar"><div class="nm"><span>${esc(m.name)}${i===0&&c.paid[m.id]>0?" 🏆":""}</span><b>${inr(c.paid[m.id]||0)}</b></div><div class="tr"><div class="fl" style="width:${(c.paid[m.id]||0)/mx*100}%;background:${col(m.id)}"></div></div></div>`).join("")}</div>
-  <h2>Fair share check</h2><div class="card"><table><tr><th>Person</th><th class="n">Paid</th><th class="n">Share</th><th class="n">Net</th></tr>${members().map(m=>{const d=c.net[m.id]||0;return `<tr><td>${esc(m.name)}</td><td class="n">${inr(c.paid[m.id]||0)}</td><td class="n">${inr(c.share[m.id]||0)}</td><td class="n" style="color:var(${d>=0?"--green":"--red"});font-weight:700">${d>=0?"+":"−"}${inr(Math.abs(d))}</td></tr>`}).join("")}</table></div>
+  <h2>Fair share check${monthSel==="all"?"":" · "+esc(monthLabel(monthSel))}</h2><div class="card"><table><tr><th>Person</th><th class="n">Paid</th><th class="n">Share</th><th class="n">Net</th></tr>${members().map(m=>{const d=c.net[m.id]||0;return `<tr><td>${esc(m.name)}</td><td class="n">${inr(c.paid[m.id]||0)}</td><td class="n">${inr(c.share[m.id]||0)}</td><td class="n" style="color:var(${d>=0?"--green":"--red"});font-weight:700">${d>=0?"+":"−"}${inr(Math.abs(d))}</td></tr>`}).join("")}</table></div>
   <h2>Category table</h2><div class="card"><table><tr><th>Category</th><th class="n">Total</th><th class="n">%</th></tr>${cats.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n"><b>${inr(v)}</b></td><td class="n">${Math.round(v/c.total*100)}%</td></tr>`).join("")||'<tr><td colspan="3" class="empty">—</td></tr>'}</table></div>`;
 }
 function renderLogs(){
@@ -417,7 +453,7 @@ function openMe(){
   document.querySelectorAll("[data-me]").forEach(b=>b.onclick=()=>{me=b.dataset.me;lset("hisab_me_"+KEY,me);$("#meBg").classList.remove("open");render()});
   $("#meBg").classList.add("open");
 }
-function showView(v){document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));document.querySelectorAll("nav .tab[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===v));$("#hero").style.display=v==="home"?"":"none";scrollTo(0,0)}
+function showView(v){document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));document.querySelectorAll("nav .tab[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===v));$("#hero").style.display=v==="home"?"":"none";$("#mbar").style.display=(v==="home"||v==="dash")?"flex":"none";scrollTo(0,0)}
 let wired=false;
 function decide(){
   if(!gotMeta||!gotEntries)return;
@@ -439,6 +475,7 @@ function wire(){
   $("#sheetBg").onclick=ev=>{if(ev.target.id==="sheetBg")closeSheet()};
   $("#shareBtn").onclick=async()=>{const u=location.href;try{if(navigator.share){await navigator.share({title:"Hisab",url:u})}else{await navigator.clipboard.writeText(u);toast("Private link copied")}}catch{try{await navigator.clipboard.writeText(u);toast("Private link copied")}catch{prompt("Copy this private link:",u)}}};
   $("#pdfBtn").onclick=()=>{render();print()};
+  $("#xlsBtn").onclick=exportXlsx;$("#monthSel").onchange=e=>{monthSel=e.target.value;render()};
 }
 async function start(){
   $("#welcome").style.display="none";
