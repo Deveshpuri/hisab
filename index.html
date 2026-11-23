@@ -114,25 +114,15 @@ td.n,th.n{text-align:right}
 <div id="welcome" class="welcome" style="display:none">
   <div style="font-size:54px">📒</div>
   <h1>Hisab · Shared expenses</h1>
-  <p>Your hisabs. Create a new one, or open one you were invited to with its link.</p>
-  <div id="mine"></div>
+  <p>No login needed. Your hisab lives behind a private link. Create it once, then share the link only with each other.</p>
+  <div id="saved"></div>
   <div class="row" style="flex-direction:column">
     <button class="btn" id="createBtn">Create new hisab</button>
     <input type="text" id="pasteLink" placeholder="…or paste your hisab link here" style="margin-top:6px">
     <button class="btn ghost" id="openBtn">Open this link</button>
-    <p id="who" style="font-size:12px;color:var(--mute)"></p><button class="btn ghost" id="homeOut" style="display:none">Log out</button>
   </div>
 </div>
 
-<div id="login" class="welcome" style="display:none;text-align:left">
-  <div style="text-align:center;font-size:54px">📒</div><h1 style="text-align:center">Hisab</h1>
-  <div class="seg" id="lg-tab"><button data-v="in" class="on">Sign in</button><button data-v="up">Create account</button></div>
-  <label class="f">Email or phone number</label><input type="text" id="lg-id" autocomplete="username" autocapitalize="off" placeholder="you@gmail.com or 9876543210">
-  <label class="f">Password</label><input type="password" id="lg-pw" autocomplete="current-password" placeholder="at least 6 characters">
-  <div class="row"><button class="btn" id="lg-go">Sign in</button></div>
-  <button class="btn ghost" id="lg-reset" style="width:100%;margin-top:8px">Forgot password?</button>
-  <p id="lg-note" style="color:var(--mute);font-size:12px;line-height:1.5"></p>
-</div>
 <div id="setup" class="welcome" style="display:none;text-align:left">
   <h1 style="text-align:center">Set up your group</h1>
   <label class="f">Group name</label><input type="text" id="su-name" value="Our Hisab">
@@ -205,20 +195,13 @@ async function initStore(){
   if(live){
     const {initializeApp}=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
     const fs=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-    const au=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
-    const app=initializeApp(firebaseConfig),db=fs.getFirestore(app),A=au.getAuth(app);
+    const db=fs.getFirestore(initializeApp(firebaseConfig));
     const E=fs.collection(db,"hisabs",KEY,"entries"),L=fs.collection(db,"hisabs",KEY,"logs"),M=fs.doc(db,"hisabs",KEY,"meta","config");
     store={
       onMeta:cb=>fs.onSnapshot(M,s=>cb(s.exists()?s.data():null),showErr),
       onEntries:cb=>fs.onSnapshot(E,s=>cb(s.docs.map(d=>d.data())),showErr),
       onLogs:cb=>fs.onSnapshot(fs.query(L,fs.orderBy("at","desc"),fs.limit(300)),s=>cb(s.docs.map(d=>d.data())),showErr),
-      saveMeta:m=>fs.setDoc(M,m),save:e=>fs.setDoc(fs.doc(E,e.id),e),log:l=>fs.addDoc(L,l),
-      getMeta:async()=>{const d=await fs.getDoc(M);return d.exists()?d.data():null},
-      join:()=>fs.updateDoc(M,{uids:fs.arrayUnion(user.uid)}),
-      link:id=>fs.updateDoc(M,{["links."+user.uid]:id}),
-      mine:async()=>(await fs.getDocs(fs.collection(db,"users",user.uid,"hisabs"))).docs.map(d=>d.data()),
-      register:(k,n)=>fs.setDoc(fs.doc(db,"users",user.uid,"hisabs",k),{key:k,name:n,at:Date.now()}),
-      auth:{onChange:cb=>au.onAuthStateChanged(A,cb),signIn:(e,p)=>au.signInWithEmailAndPassword(A,e,p),signUp:(e,p)=>au.createUserWithEmailAndPassword(A,e,p),out:()=>au.signOut(A),reset:e=>au.sendPasswordResetEmail(A,e)}
+      saveMeta:m=>fs.setDoc(M,m),save:e=>fs.setDoc(fs.doc(E,e.id),e),log:l=>fs.addDoc(L,l)
     };
   }else{
     $("#banner").innerHTML='<div class="banner">Demo mode: data is saved only on this device.</div>';
@@ -227,19 +210,15 @@ async function initStore(){
     store={onMeta:cb=>{mcb=cb;ev()},onEntries:cb=>{ecb=cb;ev()},onLogs:cb=>{lcb=cb;ev()},
       saveMeta:async m=>{lset(k+"m",JSON.stringify(m));ev()},
       save:async e=>{const a=ld("e","[]").filter(x=>x.id!==e.id);a.push(e);lset(k+"e",JSON.stringify(a));ev()},
-      log:async l=>{const a=ld("l","[]");a.push(l);lset(k+"l",JSON.stringify(a));ev()},
-      getMeta:async()=>ld("m","null"),join:async()=>{},link:async()=>{},mine:async()=>[],register:async()=>{}};
+      log:async l=>{const a=ld("l","[]");a.push(l);lset(k+"l",JSON.stringify(a));ev()}};
   }
 }
 
-/* ---------- session helpers ---------- */
-let user=null;
-const toEmail=v=>{v=v.trim();const d=v.replace(/[\s()+-]/g,"");return /^\d{8,15}$/.test(d)?d+"@phone.hisab.app":v.toLowerCase()};
-const isPhone=v=>/^\d{8,15}$/.test(v.trim().replace(/[\s()+-]/g,""));
-const who=()=>user&&user.email?(user.email.endsWith("@phone.hisab.app")?user.email.replace("@phone.hisab.app",""):user.email):"";
-const authMsg=e=>({"auth/invalid-credential":"Wrong email/phone or password","auth/invalid-email":"That email or phone number looks wrong","auth/email-already-in-use":"An account already exists. Use Sign in","auth/weak-password":"Password must be at least 6 characters","auth/network-request-failed":"No internet connection","auth/too-many-requests":"Too many tries. Wait a minute and try again","auth/operation-not-allowed":"Email/Password sign-in is not turned on in Firebase"}[e.code]||("Error: "+(e.code||e.message)));
-async function logout(){if(!confirm("Log out?"))return;lset("hisab_key","");location.hash="";try{await store.auth.out()}catch{}location.reload()}
-function switchHisab(){lset("hisab_key","");location.hash="";location.reload()}
+/* ---------- saved hisabs on this device (for switching) ---------- */
+const getList=()=>{try{return JSON.parse(lget("hisab_list")||"[]")}catch{return[]}};
+const saveList=(k,n)=>{const l=getList().filter(x=>x.key!==k);l.unshift({key:k,name:n});lset("hisab_list",JSON.stringify(l.slice(0,20)))};
+function logout(){if(!confirm("Log out of this hisab? You can open it again from the saved list or your private link."))return;lset("hisab_key","");location.hash="";location.reload()}
+function openSaved(k){lset("hisab_key",k);location.hash="k="+k;location.reload()}
 
 /* ---------- state ---------- */
 let config=null,entries=[],logs=[],me=lget("hisab_me_"+KEY),gotMeta=false,gotEntries=false;
@@ -406,22 +385,21 @@ function openSettings(){
   <label class="f">People (rename anyone, or add more)</label>${ms.map((m,i)=>`<div class="shr"><span style="flex:0 0 22px;color:var(--mute)">${i+1}</span><input type="text" data-i="${i}" value="${esc(m.name)}" style="width:100%!important"></div>`).join("")}
   ${ms.length<10?`<div class="row"><button class="btn ghost" id="g-add">+ Add person</button></div>`:""}
   <div class="row"><button class="btn ghost" id="g-cancel">Cancel</button><button class="btn" id="g-save">Save</button></div>
-  <div class="row"><button class="btn ghost" id="g-switch">Switch hisab</button>${live?`<button class="btn danger" id="g-out">Log out</button>`:""}</div>
-  ${live?`<p style="color:var(--mute);font-size:12px">Signed in as ${esc(who())}</p>`:""}
+  <div class="row"><button class="btn danger" id="g-out" style="flex:1">Switch hisab / Log out</button></div>
   <p style="color:var(--mute);font-size:12px">People can be renamed or added, but not removed once they have entries.</p>`;
     $("#g-name").oninput=e=>name=e.target.value;
     document.querySelectorAll("[data-i]").forEach(i=>i.oninput=e=>ms[+e.target.dataset.i].name=e.target.value);
-    $("#g-cancel").onclick=closeSheet;$("#g-switch").onclick=switchHisab;const go=$("#g-out");if(go)go.onclick=logout;
+    $("#g-cancel").onclick=closeSheet;$("#g-out").onclick=logout;
     const add=$("#g-add");if(add)add.onclick=()=>{ms.push({id:"m"+Date.now().toString(36),name:"Person "+(ms.length+1)});draw()};
     $("#g-save").onclick=async()=>{if(ms.some(m=>!m.name.trim()))return toast("Every person needs a name");
       if(new Set(ms.map(m=>m.name.trim().toLowerCase())).size!==ms.length)return toast("Names must be different");
-      try{await store.saveMeta({...config,name:name.trim()||"Our Hisab",members:ms.map(m=>({id:m.id,name:m.name.trim()})),createdAt:config.createdAt||Date.now()});
+      try{await store.saveMeta({name:name.trim()||"Our Hisab",members:ms.map(m=>({id:m.id,name:m.name.trim()})),createdAt:config.createdAt||Date.now()});
         await store.log({who:nm(me)||"Someone",action:"updated",text:"group settings",at:Date.now()});closeSheet();toast("Saved")}catch(e){showErr(e)}}};
   draw();$("#sheetBg").classList.add("open");
 }
 
 /* ---------- setup (new hisab) ---------- */
-function showSetup(done){
+function showSetup(){
   $("#welcome").style.display="none";$("#main").style.display="none";$("#setup").style.display="block";
   const sel=$("#su-n");if(!sel.options.length){for(let i=2;i<=10;i++)sel.add(new Option(i+" people",i));}
   const drawN=()=>{const n=+sel.value,old=[...document.querySelectorAll("#su-names input")].map(i=>i.value);
@@ -429,24 +407,24 @@ function showSetup(done){
   sel.onchange=drawN;drawN();
   $("#su-go").onclick=async()=>{const names=[...document.querySelectorAll("#su-names input")].map(i=>i.value.trim());
     if(names.some(n=>!n))return toast("Enter every name");if(new Set(names.map(n=>n.toLowerCase())).size!==names.length)return toast("Names must be different");
-    const cfg={name:$("#su-name").value.trim()||"Our Hisab",members:names.map((n,i)=>({id:"m"+(i+1),name:n})),createdAt:Date.now()};
-    try{await store.saveMeta(live?{...cfg,uids:[user.uid],links:{}}:cfg)}catch(e){return showErr(e)}
-    $("#setup").style.display="none";if(done)done();else $("#main").style.display="block"};
+    await store.saveMeta({name:$("#su-name").value.trim()||"Our Hisab",members:names.map((n,i)=>({id:"m"+(i+1),name:n})),createdAt:Date.now()});
+    $("#setup").style.display="none";$("#main").style.display="block"};
 }
 
 /* ---------- wiring ---------- */
 function openMe(){
   $("#meList").innerHTML=members().map(m=>`<button class="btn" data-me="${esc(m.id)}" style="min-width:45%">I'm ${esc(m.name)}</button>`).join("");
-  document.querySelectorAll("[data-me]").forEach(b=>b.onclick=()=>{me=b.dataset.me;lset("hisab_me_"+KEY,me);if(live)store.link(me).catch(()=>{});$("#meBg").classList.remove("open");render()});
+  document.querySelectorAll("[data-me]").forEach(b=>b.onclick=()=>{me=b.dataset.me;lset("hisab_me_"+KEY,me);$("#meBg").classList.remove("open");render()});
   $("#meBg").classList.add("open");
 }
 function showView(v){document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));document.querySelectorAll("nav .tab[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===v));$("#hero").style.display=v==="home"?"":"none";scrollTo(0,0)}
 let wired=false;
 function decide(){
   if(!gotMeta||!gotEntries)return;
-  if(!config){showSetup();return}
-  if(live&&config.links&&config.links[user.uid]&&members().some(m=>m.id===config.links[user.uid])&&me!==config.links[user.uid]){me=config.links[user.uid];lset("hisab_me_"+KEY,me)}
-  if(live&&!decide.reg){decide.reg=true;store.register(KEY,config.name||"Hisab").catch(()=>{})}
+  if(!config){
+    if(entries.length){config={name:"Devesh & Vishal",members:DEFAULT_MEMBERS,createdAt:Date.now()};store.saveMeta(config).catch(showErr)}
+    else{showSetup();return}
+  }
   $("#setup").style.display="none";$("#main").style.display="block";
   if(!wired){wired=true;wire()}
   if(!me||!members().some(m=>m.id===me))openMe();
@@ -462,49 +440,19 @@ function wire(){
   $("#shareBtn").onclick=async()=>{const u=location.href;try{if(navigator.share){await navigator.share({title:"Hisab",url:u})}else{await navigator.clipboard.writeText(u);toast("Private link copied")}}catch{try{await navigator.clipboard.writeText(u);toast("Private link copied")}catch{prompt("Copy this private link:",u)}}};
   $("#pdfBtn").onclick=()=>{render();print()};
 }
-const hideAll=()=>["#welcome","#login","#setup","#main"].forEach(i=>$(i).style.display="none");
-function subscribe(){
+async function start(){
+  $("#welcome").style.display="none";
+  await initStore();
   store.onMeta(m=>{config=m;gotMeta=true;decide();if(config&&wired)render()});
   store.onEntries(a=>{entries=a;gotEntries=true;decide();if(config&&wired)render()});
   store.onLogs(a=>{logs=a;renderLogs()});
 }
-async function enter(){
-  hideAll();
-  try{
-    const m=await store.getMeta();
-    if(!m){showSetup(enter);return}
-    if(live&&!(m.uids||[]).includes(user.uid))await store.join();
-  }catch(e){toast("Can't open this hisab: "+(e.code||e.message));lset("hisab_key","");KEY="";location.hash="";showHome();return}
-  subscribe();
+if(KEY){start()}else{
+  $("#welcome").style.display="block";
+  const sv=getList();if(sv.length)$("#saved").innerHTML='<h2 style="text-align:left">Your hisabs</h2>'+sv.map(x=>`<button class="btn ghost" data-k="${esc(x.key)}" style="width:100%;margin-bottom:6px;text-align:left">📒 ${esc(x.name)}</button>`).join("");
+  document.querySelectorAll("#saved [data-k]").forEach(b=>b.onclick=()=>openSaved(b.dataset.k));
+  $("#createBtn").onclick=()=>{setKey(newKey());KEY=getKey();start()};
+  $("#openBtn").onclick=()=>{const m=$("#pasteLink").value.match(/k=([A-Za-z0-9_-]{24,})/);if(!m)return toast("That link has no key");setKey(m[1]);KEY=m[1];start()};
 }
-async function showHome(){
-  hideAll();$("#welcome").style.display="block";
-  $("#who").textContent=live?"Signed in as "+who():"";$("#homeOut").style.display=live?"":"none";
-  $("#homeOut").onclick=logout;$("#mine").innerHTML="";
-  try{const l=(await store.mine()).sort((a,b)=>b.at-a.at);
-    if(l.length)$("#mine").innerHTML='<h2 style="text-align:left">Your hisabs</h2>'+l.map(x=>`<button class="btn ghost" data-k="${esc(x.key)}" style="width:100%;margin-bottom:6px;text-align:left">📒 ${esc(x.name)}</button>`).join("");}catch(e){showErr(e)}
-  document.querySelectorAll("#mine [data-k]").forEach(b=>b.onclick=()=>{setKey(b.dataset.k);KEY=b.dataset.k;route()});
-  $("#createBtn").onclick=()=>{setKey(newKey());KEY=getKey();route()};
-  $("#openBtn").onclick=()=>{const m=$("#pasteLink").value.match(/k=([A-Za-z0-9_-]{24,})/);if(!m)return toast("That link has no key");setKey(m[1]);KEY=m[1];route()};
-}
-let lgMode="in";
-function showLogin(){
-  hideAll();$("#login").style.display="block";
-  const note=()=>{const v=$("#lg-id").value;$("#lg-note").textContent=isPhone(v)?"Phone login uses your number as your username with a password. There is no OTP and no password reset, so keep your password safe.":lgMode==="up"?"Use at least 6 characters for the password.":""};
-  document.querySelectorAll("#lg-tab button").forEach(b=>b.onclick=()=>{lgMode=b.dataset.v;document.querySelectorAll("#lg-tab button").forEach(x=>x.classList.toggle("on",x===b));$("#lg-go").textContent=lgMode==="in"?"Sign in":"Create account";$("#lg-pw").autocomplete=lgMode==="in"?"current-password":"new-password";note()});
-  $("#lg-id").oninput=note;
-  const go=async()=>{const id=$("#lg-id").value,pw=$("#lg-pw").value;if(!id.trim()||!pw)return toast("Enter your email/phone and password");
-    try{await (lgMode==="in"?store.auth.signIn(toEmail(id),pw):store.auth.signUp(toEmail(id),pw))}catch(e){toast(authMsg(e))}};
-  $("#lg-go").onclick=go;$("#lg-pw").onkeydown=e=>{if(e.key==="Enter")go()};
-  $("#lg-reset").onclick=async()=>{const id=$("#lg-id").value;if(!id.trim())return toast("Type your email first");if(isPhone(id))return toast("Phone accounts can't reset by email");
-    try{await store.auth.reset(toEmail(id));toast("Password reset email sent")}catch(e){toast(authMsg(e))}};
-}
-function route(){hideAll();if(!user){showLogin();return}if(!KEY){showHome();return}enter()}
-async function boot(){
-  await initStore();
-  if(!live){user={uid:"demo"};route();return}
-  store.auth.onChange(u=>{const was=user&&user.uid;user=u;if(was&&u&&u.uid===was)return;route()});
-}
-boot();
 addEventListener("hashchange",()=>{const k=getKey();if(k&&k!==KEY)location.reload()});
 </script>

@@ -1,41 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function signedIn() { return request.auth != null; }
-    function cfg(key) { return get(/databases/$(database)/documents/hisabs/$(key)/meta/config).data; }
-    // A hisab is only readable/writable by accounts listed in its meta/config "uids".
-    function member(key) { return signedIn() && key.size() >= 24 && request.auth.uid in cfg(key).uids; }
-
-    match /hisabs/{key}/meta/{id} {
-      allow get: if signedIn() && key.size() >= 24;
-      // creating a new hisab: the creator must be the only member
-      allow create: if signedIn() && key.size() >= 24 && id == 'config'
-                    && request.resource.data.uids == [request.auth.uid];
-      // update: an existing member edits; or an invited person adds ONLY themselves;
-      // or the first account claims an old hisab that has no members yet.
-      allow update: if signedIn() && key.size() >= 24 && id == 'config'
-                    && request.auth.uid in request.resource.data.uids
-                    && ( request.auth.uid in resource.data.get('uids', [])
-                      || resource.data.get('uids', []).size() == 0
-                      || ( request.resource.data.uids.hasAll(resource.data.get('uids', []))
-                           && request.resource.data.uids.size() == resource.data.get('uids', []).size() + 1 ) );
-      allow delete: if false;
-    }
-
+    // Data only lives under /hisabs/{secretKey}/...; the secret key is >= 24 chars
+    // and only exists in your private link. Nothing outside this path is reachable,
+    // and /hisabs itself can't be listed, so the key can't be discovered.
     match /hisabs/{key}/entries/{id} {
-      allow get, list, create, update: if member(key);
+      allow get, list, create, update: if key.size() >= 24;
       allow delete: if false;                       // entries are soft-deleted
     }
-
-    match /hisabs/{key}/logs/{id} {
-      allow get, list, create: if member(key);
-      allow update, delete: if false;               // log is append-only
+    match /hisabs/{key}/meta/{id} {
+      allow get, list, create, update: if key.size() >= 24;   // group name + people
+      allow delete: if false;
     }
-
-    // each account's own list of hisabs (for "Your hisabs" / switch)
-    match /users/{uid}/hisabs/{k} {
-      allow read, write: if signedIn() && request.auth.uid == uid;
+    match /hisabs/{key}/logs/{id} {
+      allow get, list, create: if key.size() >= 24;
+      allow update, delete: if false;               // log is append-only
     }
   }
 }
