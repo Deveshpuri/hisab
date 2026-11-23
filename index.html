@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f2d4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Hisab Devesh Vishal</title>
+<style>
+:root{
+  --bg:#f3f5f9;--card:#fff;--ink:#17233b;--mute:#6b7a90;--line:#e3e8f0;--navy:#1f2d4a;--accent:#2f4b7c;
+  --red:#c0392b;--redbg:#fbe4e1;--green:#1e8449;--greenbg:#e3f4ea;--zeb:#eef2f7;--shadow:0 2px 10px rgba(23,35,59,.07);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#0f1624;--card:#18223a;--ink:#e8edf6;--mute:#93a1b8;--line:#2a3652;--navy:#0b1220;--accent:#7aa2e3;
+  --red:#ff8c7f;--redbg:#3a1f22;--green:#6fd39a;--greenbg:#173326;--zeb:#1d2943;--shadow:none}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:96px;font-size:15px}
+.wrap{max-width:600px;margin:0 auto;padding:0 14px}
+header{background:var(--navy);color:#fff;padding:14px 0 70px;padding-top:max(14px,env(safe-area-inset-top))}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.top h1{font-size:18px;margin:0}
+.top small{display:block;opacity:.7;font-size:11px;margin-top:2px}
+.chips{display:flex;gap:6px}
+.chip{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:99px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer}
+.hero{margin:-52px 0 14px;background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:18px;border:1px solid var(--line)}
+.hero .lbl{font-size:11px;letter-spacing:.08em;color:var(--mute);font-weight:700}
+.hero .big{font-size:26px;font-weight:800;margin:6px 0 2px;line-height:1.2}
+.hero .sub{font-size:13px;color:var(--mute)}
+.hero.red{border-left:6px solid var(--red)}.hero.red .big{color:var(--red)}
+.hero.green{border-left:6px solid var(--green)}.hero.green .big{color:var(--green)}
+.hero.zero .big{color:var(--green)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.kpi b{display:block;font-size:15px;margin-top:3px}.kpi span{font-size:10px;color:var(--mute);font-weight:700;letter-spacing:.05em}
+h2{font-size:14px;margin:18px 2px 8px;color:var(--mute);letter-spacing:.06em;text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.entry{display:flex;gap:10px;padding:12px;border-bottom:1px solid var(--line);cursor:pointer}
+.entry:last-child{border:0}
+.ico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px;flex:none}
+.entry .mid{flex:1;min-width:0}
+.entry .t{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .s{font-size:12px;color:var(--mute);margin-top:2px}
+.entry .r{text-align:right;flex:none}
+.entry .amt{font-weight:750}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;margin-top:4px}
+.pill.red{background:var(--redbg);color:var(--red)}.pill.green{background:var(--greenbg);color:var(--green)}.pill.zero{background:var(--zeb);color:var(--mute)}
+.empty{padding:30px 16px;text-align:center;color:var(--mute)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:20}
+nav .in{max-width:600px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 74px 1fr 1fr;align-items:center}
+nav button.tab{background:none;border:0;padding:10px 0 9px;font-size:11px;color:var(--mute);font-weight:650;cursor:pointer}
+nav button.tab span{display:block;font-size:20px;line-height:1.1}
+nav button.tab.on{color:var(--accent)}
+.fab{width:58px;height:58px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:30px;line-height:1;margin:-26px auto 0;box-shadow:0 6px 16px rgba(47,75,124,.45);cursor:pointer}
+.sheet-bg{position:fixed;inset:0;background:rgba(10,16,30,.55);z-index:40;display:none;align-items:flex-end;justify-content:center}
+.sheet-bg.open{display:flex}
+.sheet{background:var(--card);width:100%;max-width:600px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom))}
+.sheet h3{margin:0 0 12px;font-size:17px}
+label.f{display:block;font-size:11px;font-weight:700;color:var(--mute);letter-spacing:.05em;margin:12px 0 5px;text-transform:uppercase}
+input[type=text],input[type=number],input[type=date],select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:var(--bg);color:var(--ink)}
+.amount{font-size:28px!important;font-weight:800}
+.seg{display:flex;background:var(--zeb);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;padding:10px 4px;border-radius:10px;font-weight:650;color:var(--mute);font-size:13px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.cats{display:flex;flex-wrap:wrap;gap:6px}
+.cats button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:99px;padding:7px 11px;font-size:13px;cursor:pointer}
+.cats button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.preview{margin-top:14px;padding:12px;border-radius:12px;font-size:14px;line-height:1.45}
+.preview.red{background:var(--redbg);color:var(--red)}.preview.green{background:var(--greenbg);color:var(--green)}.preview.zero{background:var(--zeb);color:var(--ink)}
+.row{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;border:0;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff}
+.btn.ghost{background:var(--zeb);color:var(--ink)}.btn.danger{background:var(--redbg);color:var(--red);flex:0 0 auto;padding:14px 18px}
+.donutwrap{display:flex;gap:14px;align-items:center;padding:14px;flex-wrap:wrap}
+.legend{flex:1;min-width:150px;font-size:13px}.legend div{display:flex;justify-content:space-between;gap:8px;padding:3px 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.bar{padding:6px 14px}.bar .nm{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.bar .tr{height:16px;background:var(--zeb);border-radius:99px;overflow:hidden}.bar .fl{height:100%;border-radius:99px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--navy);color:#fff;text-align:left;padding:8px 10px;font-size:11px;letter-spacing:.04em}
+td{padding:8px 10px;border-bottom:1px solid var(--line)}tr:nth-child(even) td{background:var(--zeb)}
+td.n,th.n{text-align:right}
+.log{padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px}.log:last-child{border:0}
+.log b{font-weight:700}.log small{display:block;color:var(--mute);margin-top:2px}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:99px;font-size:13px;z-index:60;display:none;box-shadow:0 6px 18px rgba(0,0,0,.3);max-width:90%}
+.welcome{max-width:420px;margin:12vh auto;padding:0 18px;text-align:center}
+.welcome h1{font-size:26px}.welcome p{color:var(--mute);line-height:1.5}
+.banner{background:#fff3cd;color:#664d03;padding:8px 12px;font-size:12px;text-align:center}
+.view{display:none}.view.on{display:block}
+#printArea{display:none}
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  header,nav,.wrap#app,.sheet-bg,.toast,.banner{display:none!important}
+  #printArea{display:block;padding:10mm;font-size:11px;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea h1{font-size:20px;margin:0;color:#1f2d4a}#printArea h4{margin:14px 0 6px;color:#1f2d4a}
+  #printArea table th{background:#1f2d4a!important;color:#fff!important}
+  #printArea .box{background:#e3f4ea;border:1px solid #8fd0a8;padding:10px;text-align:center;font-size:16px;font-weight:700;color:#1e8449;margin-top:10px}
+  #printArea .r{background:#fbe4e1;color:#c0392b;font-weight:700}#printArea .g{background:#e3f4ea;color:#1e8449;font-weight:700}
+}
+</style>
+</head>
+<body>
+<div id="banner"></div>
+<div id="welcome" class="welcome" style="display:none">
+  <div style="font-size:54px">📒</div>
+  <h1>Hisab · Devesh &amp; Vishal</h1>
+  <p>No login needed. Your hisab lives behind a private link. Create it once, then share the link only with each other.</p>
+  <div class="row" style="flex-direction:column">
+    <button class="btn" id="createBtn">Create new hisab</button>
+    <input type="text" id="pasteLink" placeholder="…or paste your hisab link here" style="margin-top:6px">
+    <button class="btn ghost" id="openBtn">Open this link</button>
+  </div>
+</div>
+
+<div id="main" style="display:none">
+<header><div class="wrap top">
+  <div><h1>📒 Hisab</h1><small id="since">Devesh &amp; Vishal</small></div>
+  <div class="chips"><button class="chip" id="meChip"></button><button class="chip" id="shareBtn">🔗 Share</button><button class="chip" id="pdfBtn">⬇ PDF</button></div>
+</div></header>
+
+<div class="wrap" id="app">
+  <div class="hero" id="hero"></div>
+  <div class="view on" id="v-home">
+    <div class="kpis" id="kpis"></div>
+    <h2>Ledger</h2>
+    <div class="card" id="ledger"></div>
+  </div>
+  <div class="view" id="v-dash"></div>
+  <div class="view" id="v-logs"></div>
+</div>
+
+<nav><div class="in">
+  <button class="tab on" data-v="home"><span>🧾</span>Ledger</button>
+  <button class="tab" data-v="dash"><span>📊</span>Dashboard</button>
+  <div><button class="fab" id="fab">+</button></div>
+  <button class="tab" data-v="logs"><span>🕘</span>Logs</button>
+  <button class="tab" id="settleTab"><span>✅</span>Settle</button>
+</div></nav>
+</div>
+
+<div class="sheet-bg" id="sheetBg"><div class="sheet" id="sheet"></div></div>
+<div class="sheet-bg" id="meBg"><div class="sheet" style="text-align:center">
+  <h3>Who are you?</h3><p style="color:var(--mute);margin-top:0">Entries and logs are tagged with your name.</p>
+  <div class="row"><button class="btn" data-me="D">I'm Devesh</button><button class="btn" data-me="V">I'm Vishal</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+
+<script type="module">
+import { firebaseConfig } from "./firebase-config.js";
+const NAMES={D:"Devesh",V:"Vishal"};
+const CATS={Food:["🍽️","#59a14f"],Drinks:["🥤","#2f4b7c"],Fuel:["⛽","#f28e2b"],Outing:["🏞️","#76b7b2"],Rent:["🏠","#b07aa1"],Utilities:["💡","#edc948"],Shopping:["🛍️","#ff9da7"],Travel:["🚗","#9c755f"],Other:["📦","#e15759"],Loan:["🤝","#8e9bb0"]};
+const START="2026-11-23";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const r2=n=>Math.round(n*100)/100;
+const inr=n=>"₹"+r2(n).toLocaleString("en-IN",{maximumFractionDigits:2});
+const fdate=d=>{const [y,m,dd]=d.split("-");return `${+dd} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m-1]}`};
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+const toast=m=>{const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display="none",2400)};
+
+/* ---------- secret key (lives in the URL #, never in the repo) ---------- */
+const getKey=()=>{const m=location.hash.match(/k=([A-Za-z0-9_-]{24,})/);return m?m[1]:(()=>{try{return localStorage.getItem("hisab_key")||""}catch{return""}})()};
+const newKey=()=>{const a=new Uint8Array(24);crypto.getRandomValues(a);return Array.from(a,b=>"abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b%57]).join("")};
+const setKey=k=>{try{localStorage.setItem("hisab_key",k)}catch{}location.hash="k="+k};
+let KEY=getKey();
+if(KEY&&!location.hash.includes(KEY))setKey(KEY);
+else if(KEY){try{localStorage.setItem("hisab_key",KEY)}catch{}}
+
+/* ---------- storage: Firebase if configured, otherwise local demo ---------- */
+const live=!!(firebaseConfig&&firebaseConfig.apiKey&&firebaseConfig.projectId);
+let store;
+async function initStore(){
+  if(live){
+    const {initializeApp}=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const fs=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const db=fs.getFirestore(initializeApp(firebaseConfig));
+    const E=fs.collection(db,"hisabs",KEY,"entries"),L=fs.collection(db,"hisabs",KEY,"logs");
+    store={
+      onEntries:cb=>fs.onSnapshot(E,s=>cb(s.docs.map(d=>d.data())),e=>showErr(e)),
+      onLogs:cb=>fs.onSnapshot(fs.query(L,fs.orderBy("at","desc"),fs.limit(300)),s=>cb(s.docs.map(d=>d.data())),e=>showErr(e)),
+      save:e=>fs.setDoc(fs.doc(E,e.id),e),
+      log:l=>fs.addDoc(L,l)
+    };
+  }else{
+    $("#banner").innerHTML='<div class="banner">Demo mode: data is saved only on this device. Add your Firebase config to go live.</div>';
+    const k="hisab_demo_"+KEY;const ld=n=>{try{return JSON.parse(localStorage.getItem(k+n)||"[]")}catch{return[]}};
+    let ecb,lcb;const ev=()=>{ecb&&ecb(ld("e"));lcb&&lcb(ld("l").sort((a,b)=>b.at-a.at))};
+    store={onEntries:cb=>{ecb=cb;ev()},onLogs:cb=>{lcb=cb;ev()},
+      save:async e=>{const a=ld("e").filter(x=>x.id!==e.id);a.push(e);localStorage.setItem(k+"e",JSON.stringify(a));ev()},
+      log:async l=>{const a=ld("l");a.push(l);localStorage.setItem(k+"l",JSON.stringify(a));ev()}};
+  }
+}
+const showErr=e=>{console.error(e);toast("Connection problem: "+(e.code||e.message))};
+
+/* ---------- maths ---------- */
+// balance > 0  => Vishal owes Devesh ; < 0 => Devesh owes Vishal
+const delta=e=>e.type==="expense"?(e.payer==="D"?e.amount*(1-e.dShare):-e.amount*e.dShare):(e.payer==="D"?e.amount:-e.amount);
+const verdict=b=>{b=r2(b);return b>0?{cls:"red",txt:`Vishal owes Devesh ${inr(b)}`,short:`Vishal → Devesh ${inr(b)}`}:b<0?{cls:"green",txt:`Devesh owes Vishal ${inr(-b)}`,short:`Devesh → Vishal ${inr(-b)}`}:{cls:"zero",txt:"All settled ✅",short:"Settled"}};
+let entries=[],logs=[],me=(()=>{try{return localStorage.getItem("hisab_me")||""}catch{return""}})();
+const active=()=>entries.filter(e=>!e.deleted).sort((a,b)=>a.date===b.date?a.createdAt-b.createdAt:a.date<b.date?-1:1);
+function compute(list=active()){
+  let bal=0;const paid={D:0,V:0},share={D:0,V:0},cats={},catBy={};let loan=0;
+  const rows=list.map(e=>{
+    bal=r2(bal+delta(e));
+    if(e.type==="expense"){paid[e.payer]+=e.amount;share.D+=e.amount*e.dShare;share.V+=e.amount*(1-e.dShare);cats[e.cat]=(cats[e.cat]||0)+e.amount;(catBy[e.cat]??={D:0,V:0})[e.payer]+=e.amount}
+    else loan+=e.type==="loan"?(e.payer==="D"?e.amount:-e.amount):(e.payer==="D"?e.amount:-e.amount);
+    return {e,bal};
+  });
+  return {rows,bal,paid,share,cats,catBy,total:paid.D+paid.V,loan};
+}
+
+/* ---------- render ---------- */
+function render(){
+  const c=compute(),v=verdict(c.bal);
+  $("#hero").className="hero "+v.cls;
+  $("#hero").innerHTML=`<div class="lbl">CURRENT SETTLEMENT</div><div class="big">${c.bal===0?"All settled ✅":c.bal>0?`Vishal pays Devesh ${inr(c.bal)}`:`Devesh pays Vishal ${inr(-c.bal)}`}</div><div class="sub">${c.rows.length} entries · everything since ${fdate(START)} included</div>`;
+  $("#kpis").innerHTML=`<div class="kpi"><span>TOTAL SPENT</span><b>${inr(c.total)}</b></div><div class="kpi"><span>DEVESH PAID</span><b>${inr(c.paid.D)}</b></div><div class="kpi"><span>VISHAL PAID</span><b>${inr(c.paid.V)}</b></div>`;
+  $("#ledger").innerHTML=c.rows.length?[...c.rows].reverse().map(({e,bal})=>{const vv=verdict(bal),ci=CATS[e.type==="expense"?e.cat:"Loan"]||CATS.Other;
+    const sub=e.type==="expense"?`${fdate(e.date)} · ${esc(e.cat)} · paid by ${NAMES[e.payer]}${e.dShare!==.5?` · D ${Math.round(e.dShare*100)}% / V ${Math.round((1-e.dShare)*100)}%`:""}`:`${fdate(e.date)} · ${e.type==="loan"?"Loan":"Repayment"} · ${NAMES[e.payer]} → ${NAMES[e.payer==="D"?"V":"D"]}`;
+    return `<div class="entry" data-id="${esc(e.id)}"><div class="ico" style="background:${ci[1]}22">${e.type==="expense"?ci[0]:e.type==="loan"?"🤝":"💸"}</div><div class="mid"><div class="t">${esc(e.desc||"(no note)")}</div><div class="s">${sub}</div></div><div class="r"><div class="amt">${inr(e.amount)}</div><span class="pill ${vv.cls}">${vv.short}</span></div></div>`}).join(""):`<div class="empty">No entries yet.<br>Tap <b>+</b> to add the first one.</div>`;
+  renderDash(c);renderPrint(c);
+}
+function renderDash(c){
+  const cats=Object.entries(c.cats).sort((a,b)=>b[1]-a[1]);let ang=0,arcs="";
+  const R=60,C=2*Math.PI*R;let off=0;
+  cats.forEach(([k,v])=>{const f=v/c.total,len=f*C;arcs+=`<circle r="${R}" cx="80" cy="80" fill="none" stroke="${(CATS[k]||CATS.Other)[1]}" stroke-width="26" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 80 80)"/>`;off+=len});
+  const mx=Math.max(c.paid.D,c.paid.V,1),top=c.total?(c.paid.D>=c.paid.V?"Devesh":"Vishal"):"-";
+  $("#v-dash").innerHTML=`<h2>Spend by category</h2><div class="card donutwrap">${cats.length?`<svg width="160" height="160" viewBox="0 0 160 160">${arcs}<text x="80" y="76" text-anchor="middle" font-size="11" fill="var(--mute)">TOTAL</text><text x="80" y="95" text-anchor="middle" font-size="15" font-weight="800" fill="var(--ink)">${inr(c.total)}</text></svg><div class="legend">${cats.map(([k,v])=>`<div><span><i style="background:${(CATS[k]||CATS.Other)[1]}"></i>${esc(k)}</span><b>${inr(v)} · ${Math.round(v/c.total*100)}%</b></div>`).join("")}</div>`:`<div class="empty" style="width:100%">No expenses yet</div>`}</div>
+  <h2>Who paid the most</h2><div class="card" style="padding:8px 0">${["D","V"].map(p=>`<div class="bar"><div class="nm"><span>${NAMES[p]}${NAMES[p]===top?" 🏆":""}</span><b>${inr(c.paid[p])}</b></div><div class="tr"><div class="fl" style="width:${c.paid[p]/mx*100}%;background:${p==="D"?"#2f4b7c":"#f28e2b"}"></div></div></div>`).join("")}</div>
+  <h2>Fair share check</h2><div class="card"><table><tr><th>Person</th><th class="n">Paid</th><th class="n">Share</th><th class="n">Diff</th></tr>${["D","V"].map(p=>{const d=c.paid[p]-c.share[p];return `<tr><td>${NAMES[p]}</td><td class="n">${inr(c.paid[p])}</td><td class="n">${inr(c.share[p])}</td><td class="n" style="color:var(${d>=0?"--green":"--red"});font-weight:700">${d>=0?"+":"−"}${inr(Math.abs(d))}</td></tr>`}).join("")}</table></div>
+  <h2>Category table</h2><div class="card"><table><tr><th>Category</th><th class="n">Devesh</th><th class="n">Vishal</th><th class="n">Total</th></tr>${cats.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${inr(c.catBy[k].D)}</td><td class="n">${inr(c.catBy[k].V)}</td><td class="n"><b>${inr(v)}</b></td></tr>`).join("")||'<tr><td colspan="4" class="empty">—</td></tr>'}</table></div>`;
+}
+function renderLogs(){
+  $("#v-logs").innerHTML=`<h2>Activity log</h2><div class="card">${logs.length?logs.map(l=>`<div class="log"><b>${esc(l.who)}</b> ${esc(l.action)}: ${esc(l.text)}<small>${new Date(l.at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</small></div>`).join(""):'<div class="empty">No activity yet</div>'}</div>`;
+}
+function renderPrint(c){
+  const v=verdict(c.bal);
+  $("#printArea").innerHTML=`<h1>Shared Expense Summary</h1><div>Devesh &amp; Vishal · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div>
+  <h4>Ledger</h4><table><tr><th>Date</th><th>What</th><th>Category</th><th>Paid by</th><th class="n">Amount</th><th>Balance</th></tr>${c.rows.map(({e,bal})=>{const vv=verdict(bal);return `<tr><td>${fdate(e.date)}</td><td>${esc(e.desc)}</td><td>${e.type==="expense"?esc(e.cat):e.type==="loan"?"Loan":"Repayment"}</td><td>${NAMES[e.payer]}</td><td class="n">${inr(e.amount)}</td><td class="${vv.cls==="red"?"r":vv.cls==="green"?"g":""}">${vv.short}</td></tr>`}).join("")}</table>
+  <h4>Totals</h4><table><tr><th>Person</th><th class="n">Paid</th><th class="n">Share</th></tr><tr><td>Devesh</td><td class="n">${inr(c.paid.D)}</td><td class="n">${inr(c.share.D)}</td></tr><tr><td>Vishal</td><td class="n">${inr(c.paid.V)}</td><td class="n">${inr(c.share.V)}</td></tr></table>
+  <div class="box">FINAL SETTLEMENT: ${c.bal===0?"All settled":c.bal>0?`Vishal pays Devesh ${inr(c.bal)}`:`Devesh pays Vishal ${inr(-c.bal)}`}</div>
+  <h4>Spending by category</h4><table><tr><th>Category</th><th class="n">Total</th><th class="n">%</th></tr>${Object.entries(c.cats).sort((a,b)=>b[1]-a[1]).map(([k,x])=>`<tr><td>${esc(k)}</td><td class="n">${inr(x)}</td><td class="n">${Math.round(x/c.total*100)}%</td></tr>`).join("")}</table>`;
+}
+
+/* ---------- add / edit sheet ---------- */
+let F=null;
+function openSheet(e){
+  F=e?{...e,amount:String(e.amount),mode:e.dShare===.5?"eq":e.dShare===1?"D":e.dShare===0?"V":"c",pct:Math.round(e.dShare*100),edit:true}
+    :{id:"e"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),type:"expense",date:today(),desc:"",cat:"Food",payer:me||"D",amount:"",dShare:.5,mode:"eq",pct:50,edit:false};
+  drawSheet();$("#sheetBg").classList.add("open");
+}
+const closeSheet=()=>$("#sheetBg").classList.remove("open");
+function curEntry(){
+  const amt=parseFloat(F.amount)||0;
+  const d=F.type!=="expense"?.5:F.mode==="eq"?.5:F.mode==="D"?1:F.mode==="V"?0:Math.min(100,Math.max(0,+F.pct||0))/100;
+  return {id:F.id,type:F.type,date:F.date,desc:F.desc.trim(),cat:F.type==="expense"?F.cat:"Loan",payer:F.payer,amount:r2(amt),dShare:d,createdBy:F.createdBy||me,createdAt:F.createdAt||Date.now(),updatedAt:Date.now(),deleted:false};
+}
+function previewHTML(){
+  const e=curEntry();if(!e.amount)return `<div class="preview zero">Enter an amount to see the calculation.</div>`;
+  const others=active().filter(x=>x.id!==e.id),before=compute(others).bal,after=r2(before+delta(e)),v=verdict(after);
+  let line="";
+  if(e.type==="expense")line=`Devesh's share <b>${inr(e.amount*e.dShare)}</b> · Vishal's share <b>${inr(e.amount*(1-e.dShare))}</b><br>`;
+  else line=`${NAMES[e.payer]} → ${NAMES[e.payer==="D"?"V":"D"]}: <b>${inr(e.amount)}</b><br>`;
+  return `<div class="preview ${v.cls}">${line}After this entry: <b>${v.txt}</b></div>`;
+}
+function drawSheet(){
+  const lblPaid=F.type==="expense"?"Paid by":F.type==="loan"?"Given by":"Paid back by";
+  $("#sheet").innerHTML=`<h3>${F.edit?"Edit entry":"Add entry"}</h3>
+  <div class="seg" id="s-type">${[["expense","Expense"],["loan","Loan"],["repay","Repayment"]].map(([k,t])=>`<button data-v="${k}" class="${F.type===k?"on":""}">${t}</button>`).join("")}</div>
+  <label class="f">Amount (₹)</label><input class="amount" id="f-amt" type="number" inputmode="decimal" min="0" step="any" placeholder="0" value="${esc(F.amount)}">
+  <label class="f">What for</label><input type="text" id="f-desc" placeholder="e.g. Paneer, Petrol, Dinner" value="${esc(F.desc)}">
+  <label class="f">${lblPaid}</label><div class="seg" id="s-payer">${["D","V"].map(p=>`<button data-v="${p}" class="${F.payer===p?"on":""}">${NAMES[p]}</button>`).join("")}</div>
+  ${F.type==="expense"?`<label class="f">Category</label><div class="cats" id="s-cat">${Object.keys(CATS).filter(k=>k!=="Loan").map(k=>`<button data-v="${k}" class="${F.cat===k?"on":""}">${CATS[k][0]} ${k}</button>`).join("")}</div>
+  <label class="f">Split</label><div class="seg" id="s-mode">${[["eq","50/50"],["D","Devesh all"],["V","Vishal all"],["c","Custom"]].map(([k,t])=>`<button data-v="${k}" class="${F.mode===k?"on":""}">${t}</button>`).join("")}</div>
+  ${F.mode==="c"?`<label class="f">Devesh's share %  (Vishal gets the rest)</label><input type="number" id="f-pct" inputmode="decimal" min="0" max="100" value="${esc(F.pct)}">`:""}`:""}
+  <label class="f">Date</label><input type="date" id="f-date" value="${esc(F.date)}">
+  <div id="prev">${previewHTML()}</div>
+  <div class="row">${F.edit?`<button class="btn danger" id="f-del">🗑</button>`:""}<button class="btn ghost" id="f-cancel">Cancel</button><button class="btn" id="f-save">Save</button></div>`;
+  const rp=()=>$("#prev").innerHTML=previewHTML();
+  $("#f-amt").oninput=e=>{F.amount=e.target.value;rp()};
+  $("#f-desc").oninput=e=>{F.desc=e.target.value};
+  $("#f-date").onchange=e=>{F.date=e.target.value;rp()};
+  const pc=$("#f-pct");if(pc)pc.oninput=e=>{F.pct=e.target.value;rp()};
+  const seg=(id,fn)=>{const el=$(id);el&&el.querySelectorAll("button").forEach(b=>b.onclick=()=>{fn(b.dataset.v);drawSheet()})};
+  seg("#s-type",v=>F.type=v);seg("#s-payer",v=>F.payer=v);seg("#s-cat",v=>F.cat=v);seg("#s-mode",v=>F.mode=v);
+  $("#f-cancel").onclick=closeSheet;
+  $("#f-save").onclick=saveEntry;
+  const del=$("#f-del");if(del)del.onclick=deleteEntry;
+}
+const sumText=e=>`${e.type==="expense"?"":(e.type==="loan"?"Loan: ":"Repayment: ")}${e.desc||"(no note)"} ${inr(e.amount)} by ${NAMES[e.payer]}${e.type==="expense"&&e.dShare!==.5?` (D ${Math.round(e.dShare*100)}%)`:""}`;
+async function saveEntry(){
+  const e=curEntry();
+  if(!me){toast("Pick who you are first");$("#meBg").classList.add("open");return}
+  if(!e.amount||e.amount<=0){toast("Enter an amount");return}
+  if(!e.date){toast("Pick a date");return}
+  try{
+    await store.save(e);
+    await store.log({who:NAMES[me],action:F.edit?"edited":"added",text:sumText(e),at:Date.now(),entryId:e.id});
+    closeSheet();toast(F.edit?"Entry updated":"Entry added");
+  }catch(err){showErr(err)}
+}
+async function deleteEntry(){
+  if(!confirm("Delete this entry? It stays in the log."))return;
+  const e={...curEntry(),deleted:true};
+  try{await store.save(e);await store.log({who:NAMES[me],action:"deleted",text:sumText(e),at:Date.now(),entryId:e.id});closeSheet();toast("Entry deleted")}catch(err){showErr(err)}
+}
+
+/* ---------- wiring ---------- */
+function setMe(m){me=m;try{localStorage.setItem("hisab_me",m)}catch{}$("#meChip").textContent="👤 "+NAMES[m];$("#meBg").classList.remove("open")}
+function showView(v){document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));document.querySelectorAll("nav .tab[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===v));$("#hero").style.display=v==="home"?"":"none";scrollTo(0,0)}
+async function start(){
+  $("#welcome").style.display="none";$("#main").style.display="block";
+  $("#since").textContent="Devesh & Vishal · since "+fdate(START);
+  $("#meChip").textContent=me?"👤 "+NAMES[me]:"👤 Who?";
+  $("#meChip").onclick=()=>$("#meBg").classList.add("open");
+  document.querySelectorAll("[data-me]").forEach(b=>b.onclick=()=>setMe(b.dataset.me));
+  if(!me)$("#meBg").classList.add("open");
+  await initStore();
+  store.onEntries(a=>{entries=a;render()});
+  store.onLogs(a=>{logs=a;renderLogs()});
+  document.querySelectorAll("nav .tab[data-v]").forEach(b=>b.onclick=()=>showView(b.dataset.v));
+  $("#settleTab").onclick=()=>{showView("home");scrollTo({top:0,behavior:"smooth"});const c=compute();toast(verdict(c.bal).txt)};
+  $("#fab").onclick=()=>openSheet();
+  $("#ledger").onclick=ev=>{const el=ev.target.closest(".entry");if(!el)return;const e=entries.find(x=>x.id===el.dataset.id);if(e)openSheet(e)};
+  $("#sheetBg").onclick=ev=>{if(ev.target.id==="sheetBg")closeSheet()};
+  $("#shareBtn").onclick=async()=>{const u=location.href;try{if(navigator.share){await navigator.share({title:"Hisab",url:u})}else{await navigator.clipboard.writeText(u);toast("Private link copied")}}catch{try{await navigator.clipboard.writeText(u);toast("Private link copied")}catch{prompt("Copy this private link:",u)}}};
+  $("#pdfBtn").onclick=()=>{render();print()};
+  render();renderLogs();
+}
+if(KEY){start()}else{
+  $("#welcome").style.display="block";
+  $("#createBtn").onclick=()=>{setKey(newKey());KEY=getKey();start()};
+  $("#openBtn").onclick=()=>{const m=$("#pasteLink").value.match(/k=([A-Za-z0-9_-]{24,})/);if(!m)return toast("That link has no key");setKey(m[1]);KEY=m[1];start()};
+}
+addEventListener("hashchange",()=>{const k=getKey();if(k&&k!==KEY)location.reload()});
+</script>
+</body>
+</html>

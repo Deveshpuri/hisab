@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Data only lives under /hisabs/{secretKey}/...; the secret key is >= 24 chars
+    // and only exists in your private link. Nothing outside this path is reachable,
+    // and /hisabs itself can't be listed, so the key can't be discovered.
+    match /hisabs/{key}/entries/{id} {
+      allow get, list, create, update: if key.size() >= 24;
+      allow delete: if false;                       // entries are soft-deleted
+    }
+    match /hisabs/{key}/logs/{id} {
+      allow get, list, create: if key.size() >= 24;
+      allow update, delete: if false;               // log is append-only
+    }
+  }
+}
